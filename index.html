@@ -249,7 +249,7 @@
       <button type="button" class="btn btn-now" id="stampNow">Stamp current date & time</button>
       <button type="submit" class="btn btn-log">Log set</button>
       <div class="status" id="statusMsg"></div>
-      <div class="storage-note">Saved server-side in Netlify Blobs — synced across any device or browser you open this site from. Requires the Netlify Function in this project to be deployed.</div>
+      <div class="storage-note">Saved server-side in Netlify Blobs — synced across any device. Deleting an entry requires the admin password; anyone with the link can still add entries.</div>
     </form>
   </div>
 
@@ -306,8 +306,21 @@ async function addEntryRemote(entry){
 }
 
 async function deleteEntryRemote(id){
-  const res = await fetch(`${API_URL}?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+  let password = sessionStorage.getItem('ironlog-admin-pw');
+  if(!password){
+    password = window.prompt('Enter the admin password to delete an entry:');
+    if(password === null) throw new Error('cancelled');
+  }
+  const res = await fetch(`${API_URL}?id=${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { 'x-admin-password': password }
+  });
+  if(res.status === 401){
+    sessionStorage.removeItem('ironlog-admin-pw');
+    throw new Error('Incorrect password');
+  }
   if(!res.ok) throw new Error('Request failed: ' + res.status);
+  sessionStorage.setItem('ironlog-admin-pw', password);
   entries = await res.json();
 }
 
@@ -376,8 +389,10 @@ function renderHistory(){
         renderHistory();
         renderStats();
       }catch(e){
-        console.error(e);
-        setStatus('Could not delete — check your connection.', false);
+        if(e.message !== 'cancelled'){
+          console.error(e);
+          setStatus(e.message === 'Incorrect password' ? 'Incorrect password.' : 'Could not delete — check your connection.', false);
+        }
         btn.disabled = false;
       }
     });

@@ -47,6 +47,18 @@ export default async (req) => {
   }
 
   if (req.method === "DELETE") {
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      return new Response(
+        "Server misconfigured: set ADMIN_PASSWORD in Netlify environment variables to enable deletion.",
+        { status: 500 }
+      );
+    }
+    const providedPassword = req.headers.get("x-admin-password");
+    if (providedPassword !== adminPassword) {
+      return new Response("Incorrect password", { status: 401 });
+    }
+
     const url = new URL(req.url);
     const id = url.searchParams.get("id");
     if (!id) return new Response("Missing id", { status: 400 });
