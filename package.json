@@ -1,0 +1,9 @@
+{
+  "name": "ironlog",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal training log with Netlify Blobs storage",
+  "dependencies": {
+    "@netlify/blobs": "^8.0.0"
+  }
+}

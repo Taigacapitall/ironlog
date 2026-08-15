@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRONLOG — Training Record</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/128/three.min.js"></script>
+<style>
+  :root{
+    --bg:        #0a0b0d;
+    --bg-2:      #131418;
+    --panel:     #17181c;
+    --line:      rgba(255,255,255,0.09);
+    --text:      #f2f3f5;
+    --text-dim:  rgba(242,243,245,0.55);
+    --orange:    #ff5a1f;
+    --orange-d:  #c73f10;
+    --steel:     #8b93a1;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+  }
+  .display{ font-family:'Archivo Black', sans-serif; text-transform:uppercase; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  ::selection{ background:var(--orange); color:#0a0b0d; }
+
+  /* ================= NAV ================= */
+  header{
+    position:fixed; top:0; left:0; right:0; z-index:600;
+    padding:22px 0;
+    display:flex; justify-content:center;
+  }
+  header.scrolled{ background:rgba(10,11,13,0.85); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  nav{ width:100%; max-width:1280px; padding:0 32px; display:flex; justify-content:space-between; align-items:center; }
+  .logo{ display:flex; align-items:center; gap:10px; font-family:'Archivo Black',sans-serif; font-size:1.05rem; letter-spacing:0.02em; text-transform:uppercase; }
+  .logo .dot{ width:9px; height:9px; background:var(--orange); border-radius:50%; display:inline-block; }
+  .navlinks{ display:flex; gap:32px; font-family:'JetBrains Mono',monospace; font-size:0.72rem; letter-spacing:0.1em; text-transform:uppercase; }
+  .navlinks a{ color:var(--text-dim); text-decoration:none; transition:color 0.2s; }
+  .navlinks a:hover{ color:var(--text); }
+  @media(max-width:760px){ .navlinks{ display:none; } }
+  .nav-cta{
+    font-family:'JetBrains Mono',monospace; font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase;
+    background:var(--orange); color:#0a0b0d; padding:11px 20px; border-radius:3px; font-weight:700;
+    text-decoration:none; display:inline-flex; align-items:center; gap:8px;
+    transition:background 0.2s;
+  }
+  .nav-cta:hover{ background:#ff7040; }
+
+  /* ================= HERO ================= */
+  .hero{
+    position:relative; height:100svh; min-height:560px; overflow:hidden;
+    display:flex; flex-direction:column; justify-content:flex-end;
+    border-bottom:1px solid var(--line);
+  }
+  #canvas3d{ position:absolute; inset:0; z-index:0; }
+  .hero-vignette{
+    position:absolute; inset:0; z-index:1; pointer-events:none;
+    background:
+      radial-gradient(ellipse 120% 70% at 50% 100%, rgba(10,11,13,0.95) 0%, rgba(10,11,13,0.3) 45%, transparent 70%),
+      linear-gradient(180deg, rgba(10,11,13,0.55) 0%, rgba(10,11,13,0.05) 30%, rgba(10,11,13,0.4) 75%, #0a0b0d 100%);
+  }
+  .hero-headline{
+    position:relative; z-index:2; text-align:center; padding:0 20px;
+    font-size:clamp(4.2rem, 17vw, 12.5rem); line-height:0.86; color:var(--text);
+    letter-spacing:-0.01em;
+    text-shadow:0 8px 60px rgba(0,0,0,0.6);
+  }
+  .hero-headline .thin{ font-family:'Inter',sans-serif; font-weight:400; text-transform:none; font-size:0.16em; letter-spacing:0.3em; display:block; color:var(--orange); margin-bottom:10px; }
+
+  .hero-bottom{
+    position:relative; z-index:3; display:flex; justify-content:space-between; align-items:flex-end;
+    padding:0 32px 40px; gap:20px; flex-wrap:wrap;
+  }
+  .hero-card{
+    background:rgba(19,20,24,0.72); backdrop-filter:blur(10px); border:1px solid var(--line);
+    padding:20px 22px; max-width:280px; border-radius:4px;
+  }
+  .hero-card p{ font-size:0.85rem; color:var(--text-dim); line-height:1.5; margin-bottom:14px; }
+  .hero-card .cta{
+    display:inline-flex; align-items:center; gap:10px;
+    background:var(--orange); color:#0a0b0d; padding:11px 18px; border-radius:3px;
+    font-family:'JetBrains Mono',monospace; font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase; font-weight:700;
+    text-decoration:none; transition:background 0.2s;
+  }
+  .hero-card .cta:hover{ background:#ff7040; }
+
+  .clock-badge{
+    background:rgba(10,11,13,0.75); backdrop-filter:blur(10px); border:1px solid var(--line);
+    padding:12px 18px; border-radius:30px; text-align:right;
+  }
+  .clock-badge .d{ font-size:0.66rem; color:var(--text-dim); letter-spacing:0.08em; text-transform:uppercase; }
+  .clock-badge .t{ font-family:'JetBrains Mono',monospace; font-size:1.15rem; color:var(--text); margin-top:2px; }
+
+  /* ================= STATS STRIP ================= */
+  .stats-strip{
+    border-bottom:1px solid var(--line); background:var(--bg-2);
+    display:grid; grid-template-columns:repeat(3,1fr);
+  }
+  .stat-block{ padding:30px 32px; border-right:1px solid var(--line); }
+  .stat-block:last-child{ border-right:none; }
+  .stat-block .n{ font-family:'Archivo Black',sans-serif; font-size:2.4rem; color:var(--orange); line-height:1; }
+  .stat-block .l{ font-family:'JetBrains Mono',monospace; font-size:0.68rem; letter-spacing:0.12em; color:var(--text-dim); text-transform:uppercase; margin-top:8px; }
+  @media(max-width:700px){ .stats-strip{ grid-template-columns:1fr; } .stat-block{ border-right:none; border-bottom:1px solid var(--line); } }
+
+  /* ================= MAIN GRID ================= */
+  .workspace{ max-width:1280px; margin:0 auto; padding:70px 32px 100px; display:grid; grid-template-columns:1fr 1.15fr; gap:60px; }
+  @media(max-width:900px){ .workspace{ grid-template-columns:1fr; gap:50px; } }
+
+  .section-eyebrow{ font-family:'JetBrains Mono',monospace; font-size:0.7rem; letter-spacing:0.16em; color:var(--orange); text-transform:uppercase; margin-bottom:12px; }
+  .section-title{ font-family:'Archivo Black',sans-serif; text-transform:uppercase; font-size:1.9rem; margin-bottom:28px; }
+
+  /* form */
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-family:'JetBrains Mono',monospace; font-size:0.68rem; letter-spacing:0.1em; color:var(--text-dim); text-transform:uppercase; margin-bottom:7px; }
+  .field input{
+    width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text);
+    padding:12px 13px; font-family:'JetBrains Mono',monospace; font-size:0.9rem; border-radius:3px;
+  }
+  .field input:focus{ outline:none; border-color:var(--orange); }
+  .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+  .btn{
+    padding:14px 20px; font-family:'JetBrains Mono',monospace; font-size:0.78rem; letter-spacing:0.1em;
+    text-transform:uppercase; font-weight:700; border:none; cursor:pointer; border-radius:3px;
+    transition:opacity 0.15s ease, transform 0.1s ease;
+  }
+  .btn:active{ transform:scale(0.98); }
+  .btn-log{ background:var(--orange); color:#0a0b0d; width:100%; margin-top:6px; }
+  .btn-log:hover{ background:#ff7040; }
+  .btn-now{
+    background:transparent; border:1px solid var(--line); color:var(--text-dim); margin-top:10px; width:100%;
+    font-size:0.7rem; padding:10px;
+  }
+  .btn-now:hover{ border-color:var(--orange); color:var(--orange); }
+
+  .status{ font-family:'JetBrains Mono',monospace; font-size:0.7rem; color:var(--text-dim); margin-top:10px; min-height:16px; text-align:center; }
+  .status.ok{ color:var(--orange); }
+
+  .storage-note{ font-family:'JetBrains Mono',monospace; font-size:0.66rem; color:var(--text-dim); margin-top:18px; line-height:1.6; border-top:1px solid var(--line); padding-top:14px; }
+
+  /* history */
+  .day-group{ margin-bottom:24px; }
+  .day-group .day-label{ font-family:'JetBrains Mono',monospace; font-size:0.7rem; color:var(--steel); letter-spacing:0.08em; margin-bottom:12px; text-transform:uppercase; border-bottom:1px solid var(--line); padding-bottom:8px; }
+  .entry{ display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--line); gap:10px; }
+  .entry:last-child{ border-bottom:none; }
+  .entry-main{ flex:1; min-width:0; }
+  .entry-ex{ font-family:'Archivo Black',sans-serif; font-size:0.85rem; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .entry-meta{ font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--text-dim); margin-top:4px; }
+  .entry-time{ font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--steel); white-space:nowrap; text-align:right; }
+  .entry-del{ background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:0.9rem; padding:4px 6px; flex-shrink:0; }
+  .entry-del:hover{ color:#e05252; }
+  .empty-state{ font-family:'JetBrains Mono',monospace; color:var(--text-dim); font-size:0.82rem; padding:20px 0; text-align:center; }
+
+  footer{ border-top:1px solid var(--line); padding:26px 32px; text-align:center; font-family:'JetBrains Mono',monospace; font-size:0.68rem; color:var(--text-dim); letter-spacing:0.06em; }
+
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    .btn{ transition:none; }
+  }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-track{ background:var(--bg); }
+  ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:4px; }
+</style>
+</head>
+<body>
+
+<header id="siteHeader">
+  <nav>
+    <div class="logo"><span class="dot"></span>IRONLOG</div>
+    <div class="navlinks">
+      <a href="#log">Log</a>
+      <a href="#history">History</a>
+    </div>
+    <a href="#log" class="nav-cta">New session →</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <canvas id="canvas3d"></canvas>
+  <div class="hero-vignette"></div>
+  <h1 class="hero-headline display">
+    <span class="thin">Street strength, tracked</span>
+    TRAIN.
+  </h1>
+  <div class="hero-bottom">
+    <div class="hero-card">
+      <p>Log today's session — series, reps, and the exact time you finished.</p>
+      <a href="#log" class="cta">Log now →</a>
+    </div>
+    <div class="clock-badge">
+      <div class="d" id="dateDisplay">—</div>
+      <div class="t" id="timeDisplay">—</div>
+    </div>
+  </div>
+</section>
+
+<div class="stats-strip">
+  <div class="stat-block"><div class="n" id="statToday">0</div><div class="l">Sets today</div></div>
+  <div class="stat-block"><div class="n" id="statTotal">0</div><div class="l">Sets logged</div></div>
+  <div class="stat-block"><div class="n" id="statLast">—</div><div class="l">Last session</div></div>
+</div>
+
+<div class="workspace">
+  <div id="log">
+    <div class="section-eyebrow">New entry</div>
+    <h2 class="section-title">Log a set</h2>
+    <form id="logForm">
+      <div class="field">
+        <label for="exercise">Exercise</label>
+        <input type="text" id="exercise" placeholder="e.g. Pull-ups, Squat" required>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="sets">Series</label>
+          <input type="number" id="sets" min="1" value="1" required>
+        </div>
+        <div class="field">
+          <label for="reps">Reps</label>
+          <input type="text" id="reps" placeholder="e.g. 10 or 10,8,6" required>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="weight">Weight (optional)</label>
+          <input type="number" id="weight" step="0.5" placeholder="kg">
+        </div>
+        <div class="field">
+          <label for="unit">Unit</label>
+          <input type="text" id="unit" value="kg">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="dateField">Date</label>
+          <input type="date" id="dateField" required>
+        </div>
+        <div class="field">
+          <label for="timeField">Time finished</label>
+          <input type="time" id="timeField" required>
+        </div>
+      </div>
+      <button type="button" class="btn btn-now" id="stampNow">Stamp current date & time</button>
+      <button type="submit" class="btn btn-log">Log set</button>
+      <div class="status" id="statusMsg"></div>
+      <div class="storage-note">Saved server-side in Netlify Blobs — synced across any device or browser you open this site from. Requires the Netlify Function in this project to be deployed.</div>
+    </form>
+  </div>
+
+  <div id="history">
+    <div class="section-eyebrow">Record</div>
+    <h2 class="section-title">History</h2>
+    <div id="historyList"></div>
+  </div>
+</div>
+
+<footer>IRONLOG — personal training record</footer>
+
+<script>
+/* ===================== DATA LAYER (Netlify Blobs via Netlify Function) ===================== */
+const API_URL = '/.netlify/functions/entries';
+let entries = [];
+
+function pad(n){ return n.toString().padStart(2,'0'); }
+function todayStr(){
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function nowTimeStr(){
+  const d = new Date();
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fmtDateLabel(dateStr){
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  return dt.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+}
+
+async function loadEntries(){
+  try{
+    const res = await fetch(API_URL);
+    if(!res.ok) throw new Error('Request failed: ' + res.status);
+    entries = await res.json();
+  }catch(e){
+    console.error('Could not load entries from server:', e);
+    entries = [];
+    return false;
+  }
+  return true;
+}
+
+async function addEntryRemote(entry){
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(entry)
+  });
+  if(!res.ok) throw new Error('Request failed: ' + res.status);
+  entries = await res.json();
+}
+
+async function deleteEntryRemote(id){
+  const res = await fetch(`${API_URL}?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if(!res.ok) throw new Error('Request failed: ' + res.status);
+  entries = await res.json();
+}
+
+/* ===================== RENDER ===================== */
+function setStatus(msg, ok){
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = 'status' + (ok ? ' ok' : '');
+  if(msg){ setTimeout(()=>{ el.textContent=''; el.className='status'; }, 2200); }
+}
+
+function renderStats(){
+  const today = todayStr();
+  const todaysEntries = entries.filter(e => e.date === today);
+  const todaySets = todaysEntries.reduce((sum,e)=> sum + (parseInt(e.sets,10)||0), 0);
+  const totalSets = entries.reduce((sum,e)=> sum + (parseInt(e.sets,10)||0), 0);
+
+  document.getElementById('statToday').textContent = todaySets;
+  document.getElementById('statTotal').textContent = totalSets;
+
+  if(entries.length){
+    const sorted = [...entries].sort((a,b)=> (b.date+b.time).localeCompare(a.date+a.time));
+    const last = sorted[0];
+    const isToday = last.date === today;
+    document.getElementById('statLast').textContent = isToday ? last.time : last.date.slice(5);
+  } else {
+    document.getElementById('statLast').textContent = '—';
+  }
+
+  updateBarbell(todaySets);
+}
+
+function renderHistory(){
+  const container = document.getElementById('historyList');
+  if(!entries.length){
+    container.innerHTML = '<div class="empty-state">No sets logged yet. Your first entry starts the record.</div>';
+    return;
+  }
+  const byDate = {};
+  entries.forEach(e => {
+    if(!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  });
+  const dates = Object.keys(byDate).sort((a,b)=> b.localeCompare(a));
+
+  container.innerHTML = dates.map(date => {
+    const dayEntries = byDate[date].sort((a,b)=> b.time.localeCompare(a.time));
+    const rows = dayEntries.map(e => `
+      <div class="entry">
+        <div class="entry-main">
+          <div class="entry-ex">${escapeHtml(e.exercise)}</div>
+          <div class="entry-meta">${escapeHtml(String(e.sets))} × ${escapeHtml(String(e.reps))}${e.weight ? ' — ' + escapeHtml(String(e.weight)) + escapeHtml(e.unit||'') : ''}</div>
+        </div>
+        <div class="entry-time">${escapeHtml(e.time)}</div>
+        <button class="entry-del" data-id="${e.id}" aria-label="Delete entry">✕</button>
+      </div>
+    `).join('');
+    return `<div class="day-group"><div class="day-label">${fmtDateLabel(date)}</div>${rows}</div>`;
+  }).join('');
+
+  container.querySelectorAll('.entry-del').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try{
+        await deleteEntryRemote(btn.dataset.id);
+        renderHistory();
+        renderStats();
+      }catch(e){
+        console.error(e);
+        setStatus('Could not delete — check your connection.', false);
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+/* ===================== FORM ===================== */
+document.getElementById('dateField').value = todayStr();
+document.getElementById('timeField').value = nowTimeStr();
+
+document.getElementById('stampNow').addEventListener('click', () => {
+  document.getElementById('dateField').value = todayStr();
+  document.getElementById('timeField').value = nowTimeStr();
+});
+
+document.getElementById('logForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const exercise = document.getElementById('exercise').value.trim();
+  const sets = document.getElementById('sets').value;
+  const reps = document.getElementById('reps').value.trim();
+  const weight = document.getElementById('weight').value;
+  const unit = document.getElementById('unit').value.trim();
+  const date = document.getElementById('dateField').value;
+  const time = document.getElementById('timeField').value;
+
+  if(!exercise || !sets || !reps || !date || !time){
+    setStatus('Fill in exercise, series, reps, date and time.', false);
+    return;
+  }
+
+  const submitBtn = document.querySelector('.btn-log');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Saving…';
+
+  try{
+    await addEntryRemote({
+      exercise, sets, reps,
+      weight: weight || null,
+      unit: unit || 'kg',
+      date, time
+    });
+    setStatus('Set logged.', true);
+    document.getElementById('exercise').value = '';
+    document.getElementById('reps').value = '';
+    document.getElementById('weight').value = '';
+    document.getElementById('exercise').focus();
+    document.getElementById('dateField').value = todayStr();
+    document.getElementById('timeField').value = nowTimeStr();
+    renderStats();
+    renderHistory();
+  }catch(e){
+    console.error(e);
+    setStatus('Could not save — check your connection and try again.', false);
+  }finally{
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Log set';
+  }
+});
+
+/* ===================== LIVE CLOCK ===================== */
+function tickClock(){
+  const d = new Date();
+  document.getElementById('dateDisplay').textContent = d.toLocaleDateString(undefined,{ weekday:'short', month:'short', day:'numeric' });
+  document.getElementById('timeDisplay').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+/* ===================== NAV SCROLL STATE ===================== */
+const header = document.getElementById('siteHeader');
+window.addEventListener('scroll', () => {
+  header.classList.toggle('scrolled', window.scrollY > 40);
+});
+
+/* ===================== 3D HERO SCENE ===================== */
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let scene, camera, renderer, barGroup, plateGroups = { left: [], right: [] }, particles;
+let targetRotY = 0, mouseX = 0, mouseY = 0;
+
+function init3D(){
+  const canvas = document.getElementById('canvas3d');
+  const stage = canvas.parentElement;
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0a0b0d, 0.045);
+
+  camera = new THREE.PerspectiveCamera(42, stage.clientWidth / stage.clientHeight, 0.1, 100);
+  camera.position.set(0, 0.4, 10.5);
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(stage.clientWidth, stage.clientHeight);
+
+  const ambient = new THREE.AmbientLight(0x4a5568, 1.0);
+  scene.add(ambient);
+  const key = new THREE.DirectionalLight(0xffb060, 2.2);
+  key.position.set(5, 6, 7);
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0xff5a1f, 1.1);
+  rim.position.set(-6, -1, -5);
+  scene.add(rim);
+
+  barGroup = new THREE.Group();
+  barGroup.rotation.x = 0.08;
+  scene.add(barGroup);
+
+  const barMat = new THREE.MeshStandardMaterial({ color:0x9aa0ab, metalness:0.9, roughness:0.3 });
+  const barGeo = new THREE.CylinderGeometry(0.1, 0.1, 7.2, 24);
+  const bar = new THREE.Mesh(barGeo, barMat);
+  bar.rotation.z = Math.PI/2;
+  barGroup.add(bar);
+
+  const collarMat = new THREE.MeshStandardMaterial({ color:0x24262b, metalness:0.7, roughness:0.35 });
+  [-2.1, 2.1].forEach(x => {
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.2,20), collarMat);
+    collar.rotation.z = Math.PI/2;
+    collar.position.x = x;
+    barGroup.add(collar);
+  });
+
+  buildPlates(0);
+
+  // ambient dust particles
+  const pGeo = new THREE.BufferGeometry();
+  const count = 180;
+  const positions = new Float32Array(count*3);
+  for(let i=0;i<count;i++){
+    positions[i*3] = (Math.random()-0.5)*20;
+    positions[i*3+1] = (Math.random()-0.5)*10;
+    positions[i*3+2] = (Math.random()-0.5)*14;
+  }
+  pGeo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+  const pMat = new THREE.PointsMaterial({ color:0xffb060, size:0.025, transparent:true, opacity:0.5 });
+  particles = new THREE.Points(pGeo, pMat);
+  scene.add(particles);
+
+  window.addEventListener('resize', onResize);
+  window.addEventListener('pointermove', onPointerMove);
+
+  animate();
+}
+
+function plateMaterial(index){
+  const colors = [0xff5a1f, 0x2a2c30, 0x9aa0ab, 0x1a1b1e];
+  return new THREE.MeshStandardMaterial({ color: colors[index % colors.length], metalness:0.55, roughness:0.4 });
+}
+
+function buildPlates(count){
+  ['left','right'].forEach(side => {
+    plateGroups[side].forEach(m => barGroup.remove(m));
+    plateGroups[side] = [];
+  });
+
+  const capped = Math.min(count, 8);
+  const perSide = Math.ceil(capped/2);
+  const startX = 2.3;
+  const radiusBase = 0.75;
+
+  for(let side of ['left','right']){
+    const dir = side === 'left' ? -1 : 1;
+    for(let i=0;i<perSide;i++){
+      const radius = radiusBase + (i%3)*0.16;
+      const geo = new THREE.CylinderGeometry(radius, radius, 0.16, 28);
+      const mesh = new THREE.Mesh(geo, plateMaterial(i));
+      mesh.rotation.z = Math.PI/2;
+      mesh.position.x = dir * (startX + i*0.21);
+      barGroup.add(mesh);
+      plateGroups[side].push(mesh);
+    }
+  }
+}
+
+function updateBarbell(todaySets){
+  if(!barGroup) return;
+  buildPlates(todaySets);
+}
+
+function onResize(){
+  const stage = document.getElementById('canvas3d').parentElement;
+  camera.aspect = stage.clientWidth / stage.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(stage.clientWidth, stage.clientHeight);
+}
+
+function onPointerMove(e){
+  mouseX = (e.clientX / window.innerWidth) - 0.5;
+  mouseY = (e.clientY / window.innerHeight) - 0.5;
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  if(!reduceMotion){
+    barGroup.rotation.y += 0.004;
+    targetRotY += (mouseX*0.5 - targetRotY) * 0.03;
+    barGroup.rotation.z = targetRotY * 0.08;
+    camera.position.y = 0.4 + mouseY * -0.3;
+    particles.rotation.y += 0.0004;
+  }
+  renderer.render(scene, camera);
+}
+
+/* ===================== BOOT ===================== */
+(async function boot(){
+  const ok = await loadEntries();
+  if(!ok){
+    setStatus('Could not reach the server — is this running on Netlify (or "netlify dev" locally)?', false);
+  }
+  renderStats();
+  renderHistory();
+  init3D();
+})();
+</script>
+
+</body>
+</html>
