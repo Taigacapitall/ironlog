@@ -1,22 +1,34 @@
 # IronLog
 
-Personal training log: exercise, series, reps, and the date/time you finished.
-Data is stored server-side in **Netlify Blobs**, so it's the same log no
-matter which device or browser you open the site from.
+Personal training log: exercises, sets (reps + weight), and full
+dashboard analytics (volume, PRs, streaks, per-exercise progress).
+Data is stored server-side in **Netlify Blobs**, so it's the same log
+no matter which device or browser you open the site from.
 
 ## Project structure
 
 ```
-index.html                     — the site itself
-netlify/functions/entries.js   — serverless function reading/writing Blobs
-netlify.toml                   — tells Netlify where the functions live
-package.json                   — declares the @netlify/blobs dependency
+index.html                       — the site itself
+netlify/functions/sessions.js    — serverless function reading/writing Blobs
+netlify.toml                     — tells Netlify where the functions live
+package.json                     — declares the @netlify/blobs dependency
 ```
+
+## Data model
+
+Each **session** (one workout) contains one or more **exercises**,
+each with one or more **sets** (reps + optional weight). This is what
+enables volume, PR, and per-set progression calculations.
+
+If you have data from an earlier version of this app (flat
+exercise/sets/reps entries), the function automatically converts it
+into the new session/exercise/set format the first time it runs after
+deployment — nothing is deleted, and no data is invented.
 
 ## Protect deletion with a password
 
-By default, deleting an entry requires an admin password checked
-server-side (anyone with the link can still *add* entries — see note
+By default, deleting a session requires an admin password checked
+server-side (anyone with the link can still *add* sessions — see note
 below if you want to lock that down too).
 
 1. In the Netlify dashboard: **Site settings → Environment variables → Add a variable**.
@@ -28,10 +40,10 @@ password, verify it against the server, and remember it for the rest of
 your browser session (so you're not asked again on every delete, but
 you will be asked again in a new tab or after closing the browser).
 
-If you also want to stop random visitors from *adding* fake entries,
+If you also want to stop random visitors from *adding* fake sessions,
 the same pattern (check `x-admin-password` header, compare to
 `process.env.ADMIN_PASSWORD`) can be added to the `POST` handler in
-`netlify/functions/entries.js` — ask and it can be added.
+`netlify/functions/sessions.js` — ask and it can be added.
 
 ## Deploy to Netlify
 

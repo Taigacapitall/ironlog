@@ -3,770 +3,888 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IRONLOG — Suivi d'entraînement</title>
+<title>IRONLOG</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root{
-    --bg:            #05060a;
-    --bg-2:          #0a0c12;
-    --glass:         rgba(255,255,255,0.045);
-    --glass-hi:      rgba(255,255,255,0.07);
-    --border:        rgba(255,255,255,0.09);
-    --border-orange: rgba(255,122,0,0.45);
-    --orange:        #ff7a00;
-    --orange-dim:    rgba(255,122,0,0.16);
-    --white:         #ffffff;
-    --dim:           rgba(255,255,255,0.56);
-    --dim2:          rgba(255,255,255,0.32);
+    --bg:#050608; --bg-2:#0a0b0e;
+    --white:#f5f6f8; --dim:rgba(245,246,248,0.58); --dim2:rgba(245,246,248,0.34);
+    --orange:#ff7a00; --orange-dim:rgba(255,122,0,0.15);
+    --blue:#7fa4ff;
+    --g-strong-bg:linear-gradient(160deg, rgba(255,255,255,0.09), rgba(255,255,255,0.02));
+    --g-soft-bg:linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+    --border:rgba(255,255,255,0.10); --border-orange:rgba(255,122,0,0.5);
   }
-  *{ margin:0; padding:0; box-sizing:border-box; }
+  *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html{ scroll-behavior:smooth; }
-  body{
-    background:var(--bg); color:var(--white);
-    font-family:'Inter', sans-serif;
-    min-height:100vh; position:relative;
-  }
-  ::selection{ background:var(--orange); color:#05060a; }
-  .display{ font-family:'Space Grotesk', sans-serif; }
-  .mono{ font-family:'JetBrains Mono', monospace; }
+  body{ background:var(--bg); color:var(--white); font-family:'Inter',sans-serif; min-height:100vh; overflow-x:hidden; }
+  ::selection{ background:var(--orange); color:#050608; }
+  .display{ font-family:'Space Grotesk',sans-serif; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  button, select, input{ font-family:inherit; }
 
   body::before{
     content:''; position:fixed; inset:0; z-index:-2;
     background:
-      radial-gradient(ellipse 60% 40% at 15% 0%, rgba(255,122,0,0.08), transparent 60%),
-      radial-gradient(ellipse 50% 40% at 100% 20%, rgba(80,100,255,0.05), transparent 60%),
+      radial-gradient(ellipse 55% 40% at 10% 0%, rgba(255,122,0,0.09), transparent 60%),
+      radial-gradient(ellipse 45% 35% at 100% 10%, rgba(127,164,255,0.06), transparent 60%),
       var(--bg);
   }
-  .grain{
-    position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:0.035; mix-blend-mode:overlay;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
+  .grain{ position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:0.03; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 
-  .wrap{ max-width:1240px; margin:0 auto; padding:0 32px; }
+  /* ===== glass tiers ===== */
+  .glass-strong, .glass-soft{ border:1px solid var(--border); border-radius:20px; position:relative; }
+  .glass-strong{
+    background:var(--g-strong-bg); backdrop-filter:blur(22px) saturate(160%); -webkit-backdrop-filter:blur(22px) saturate(160%);
+    box-shadow:0 20px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.14);
+  }
+  .glass-soft{
+    background:var(--g-soft-bg); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    box-shadow:0 8px 26px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .glass-strong::before{ content:''; position:absolute; top:0; left:10%; right:10%; height:1px;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent); pointer-events:none; }
 
-  .glass{
-    background:linear-gradient(155deg, var(--glass-hi), var(--glass));
-    border:1px solid var(--border);
-    backdrop-filter:blur(18px);
-    -webkit-backdrop-filter:blur(18px);
-    border-radius:20px;
-    box-shadow:0 10px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+  /* ===== app shell ===== */
+  .rail{
+    position:fixed; top:20px; bottom:20px; left:20px; width:72px; z-index:800;
+    display:flex; flex-direction:column; align-items:center; padding:18px 0; gap:6px;
   }
+  .rail-logo{ width:34px; height:34px; border-radius:10px; background:var(--orange); display:flex; align-items:center; justify-content:center; margin-bottom:22px; box-shadow:0 0 18px rgba(255,122,0,0.5); }
+  .rail-logo svg{ width:17px; height:17px; }
+  .rail-nav{ display:flex; flex-direction:column; gap:8px; flex:1; }
+  .rail-btn{
+    width:44px; height:44px; border-radius:13px; background:transparent; border:none; color:var(--dim);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.2s, color 0.2s;
+  }
+  .rail-btn svg{ width:19px; height:19px; }
+  .rail-btn:hover{ color:var(--white); background:rgba(255,255,255,0.05); }
+  .rail-btn.active{ color:var(--orange); background:var(--orange-dim); box-shadow:inset 0 0 0 1px rgba(255,122,0,0.35); }
+  @media(max-width:900px){ .rail{ display:none; } }
 
-  .eyebrow{
-    font-family:'JetBrains Mono', monospace; font-size:0.72rem; letter-spacing:0.22em; text-transform:uppercase;
-    color:var(--orange); display:flex; align-items:center; gap:10px;
+  .bottom-nav{
+    display:none; position:fixed; bottom:16px; left:50%; transform:translateX(-50%); z-index:800;
+    padding:8px; border-radius:22px; gap:4px;
   }
-  .eyebrow::before{ content:''; width:20px; height:1.5px; background:var(--orange); }
+  @media(max-width:900px){ .bottom-nav{ display:flex; } }
+  .bn-btn{ width:56px; height:52px; border-radius:16px; background:transparent; border:none; color:var(--dim);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; cursor:pointer; }
+  .bn-btn svg{ width:18px; height:18px; }
+  .bn-btn span{ font-size:0.58rem; letter-spacing:0.02em; }
+  .bn-btn.active{ color:var(--orange); background:var(--orange-dim); }
 
-  header{ position:fixed; top:0; left:0; right:0; z-index:700; display:flex; justify-content:center; padding:18px 0; }
-  .navbar{
-    width:100%; max-width:1240px; margin:0 32px; padding:12px 22px;
-    display:flex; justify-content:space-between; align-items:center;
-    border-radius:16px;
-  }
-  @media(min-width:1304px){ .navbar{ margin:0 auto; } }
-  .logo{ display:flex; align-items:center; gap:9px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.02rem; letter-spacing:0.01em; text-transform:uppercase; }
-  .logo .dot{ width:8px; height:8px; border-radius:50%; background:var(--orange); box-shadow:0 0 12px var(--orange); }
-  .navlinks{ display:flex; gap:30px; font-size:0.86rem; }
-  .navlinks a{ color:var(--dim); text-decoration:none; transition:color 0.2s; }
-  .navlinks a:hover{ color:var(--white); }
-  @media(max-width:760px){ .navlinks{ display:none; } }
-  .nav-cta{
-    font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:600;
-    background:var(--orange); color:#05060a; padding:10px 18px; border-radius:10px;
-    text-decoration:none; transition:transform 0.15s ease, box-shadow 0.15s ease;
-    box-shadow:0 4px 20px rgba(255,122,0,0.25);
-  }
-  .nav-cta:hover{ transform:translateY(-1px); box-shadow:0 6px 26px rgba(255,122,0,0.4); }
+  .main{ margin-left:112px; padding:28px 32px 100px; max-width:1320px; }
+  @media(max-width:900px){ .main{ margin-left:0; padding:20px 18px 110px; } }
 
-  .hero{ position:relative; padding:190px 0 120px; overflow:hidden; }
-  .ghost-text{
-    position:absolute; top:44%; left:50%; transform:translate(-50%,-50%);
-    font-family:'Space Grotesk',sans-serif; font-weight:700; text-transform:uppercase;
-    font-size:clamp(6rem, 20vw, 15rem); letter-spacing:-0.02em;
-    color:transparent; -webkit-text-stroke:1px rgba(255,255,255,0.07);
-    white-space:nowrap; z-index:0; user-select:none; pointer-events:none;
-  }
-  .hero-grid{ position:relative; z-index:2; display:grid; grid-template-columns:1.1fr 0.9fr; gap:50px; align-items:center; }
-  @media(max-width:900px){ .hero-grid{ grid-template-columns:1fr; } }
-  .hero h1{
-    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:clamp(2.4rem, 5vw, 3.6rem);
-    line-height:1.08; letter-spacing:-0.01em; margin:18px 0 20px;
-  }
-  .hero h1 .accent{ color:var(--orange); }
-  .hero p.sub{ color:var(--dim); font-size:1.08rem; line-height:1.6; max-width:460px; margin-bottom:34px; }
-  .hero-btns{ display:flex; gap:16px; flex-wrap:wrap; }
-  .btn{
-    font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:600; padding:15px 26px; border-radius:12px;
-    border:none; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:8px;
-    transition:transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease, border-color 0.2s ease;
-  }
+  .view{ display:none; }
+  .view.active{ display:block; animation:fadeIn 0.35s ease; }
+  @keyframes fadeIn{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+
+  /* ===== top chip row ===== */
+  .chip-row{ display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; margin-bottom:24px; scrollbar-width:none; }
+  .chip-row::-webkit-scrollbar{ display:none; }
+  .chip{ flex-shrink:0; padding:9px 15px; border-radius:12px; font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--dim); display:flex; align-items:center; gap:7px; white-space:nowrap; }
+  .chip b{ color:var(--white); font-weight:700; }
+  .chip .dot{ width:6px; height:6px; border-radius:50%; background:var(--orange); }
+
+  /* ===== greeting + start ===== */
+  .greet-row{ display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:18px; margin-bottom:26px; }
+  .greet-eyebrow{ font-family:'JetBrains Mono',monospace; font-size:0.7rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--orange); margin-bottom:8px; }
+  .greet-title{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:clamp(1.8rem,3.6vw,2.6rem); letter-spacing:-0.01em; }
+  .btn{ font-size:0.86rem; font-weight:600; padding:13px 22px; border-radius:13px; border:none; cursor:pointer;
+    display:inline-flex; align-items:center; gap:8px; transition:transform 0.15s, box-shadow 0.15s, background 0.2s, border-color 0.2s, color 0.2s; }
   .btn:active{ transform:scale(0.97); }
-  .btn-primary{ background:var(--orange); color:#05060a; box-shadow:0 8px 30px rgba(255,122,0,0.28); }
-  .btn-primary:hover{ transform:translateY(-2px); box-shadow:0 10px 36px rgba(255,122,0,0.42); }
+  .btn-primary{ background:var(--orange); color:#050608; box-shadow:0 8px 26px rgba(255,122,0,0.3); }
+  .btn-primary:hover{ transform:translateY(-2px); box-shadow:0 10px 32px rgba(255,122,0,0.44); }
   .btn-ghost{ background:rgba(255,255,255,0.04); color:var(--white); border:1px solid var(--border); }
-  .btn-ghost:hover{ border-color:var(--border-orange); background:rgba(255,122,0,0.06); }
-
-  .rings-wrap{ position:relative; display:flex; align-items:center; justify-content:center; height:340px; }
-  .rings-wrap svg{ width:100%; max-width:340px; height:auto; filter:drop-shadow(0 0 40px rgba(255,122,0,0.12)); }
-  .ring{ fill:none; stroke-linecap:round; transform-origin:center; }
-  .float-chip{
-    position:absolute; padding:10px 16px; border-radius:12px; font-family:'JetBrains Mono',monospace; font-size:0.72rem;
-    color:var(--dim); animation:float 6s ease-in-out infinite;
-  }
-  .chip-a{ top:6%; right:2%; animation-delay:0s; }
-  .chip-b{ bottom:8%; left:0%; animation-delay:1.4s; }
-  @keyframes float{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-10px); } }
-
-  section{ position:relative; padding:90px 0; }
-  .section-head{ margin-bottom:48px; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:18px; }
-  .section-head h2{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:clamp(1.8rem, 3.4vw, 2.6rem); margin-top:12px; letter-spacing:-0.01em; }
-  .section-head p{ color:var(--dim); font-size:0.92rem; max-width:360px; }
-
-  .dash-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
-  @media(max-width:900px){ .dash-grid{ grid-template-columns:1fr 1fr; } }
-  @media(max-width:520px){ .dash-grid{ grid-template-columns:1fr; } }
-  .dash-card{ padding:26px 24px; transition:transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease; }
-  .dash-card:hover{ transform:translateY(-5px); border-color:var(--border-orange); box-shadow:0 14px 44px rgba(255,122,0,0.14), inset 0 1px 0 rgba(255,255,255,0.06); }
-  .dash-icon{
-    width:42px; height:42px; border-radius:12px; background:var(--orange-dim); display:flex; align-items:center; justify-content:center;
-    margin-bottom:18px; color:var(--orange);
-  }
-  .dash-icon svg{ width:20px; height:20px; }
-  .dash-num{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:2rem; line-height:1; }
-  .dash-label{ font-size:0.78rem; color:var(--dim); margin-top:8px; }
-
-  .form-card{ padding:38px; max-width:640px; margin:0 auto; }
-  .field{ margin-bottom:18px; }
-  .field label{ display:block; font-family:'JetBrains Mono',monospace; font-size:0.68rem; letter-spacing:0.1em; color:var(--dim); text-transform:uppercase; margin-bottom:8px; }
-  .field input, .field select{
-    width:100%; background:rgba(255,255,255,0.035); border:1px solid var(--border); color:var(--white);
-    padding:13px 14px; font-family:'Inter',sans-serif; font-size:0.92rem; border-radius:10px;
-    transition:border-color 0.2s ease, background 0.2s ease;
-  }
-  .field select{ appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6' fill='%23ff7a00'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 16px center; }
-  .field input:focus, .field select:focus{ outline:none; border-color:var(--orange); background:rgba(255,122,0,0.05); }
-  .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  .field-row3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
-  @media(max-width:520px){ .field-row, .field-row3{ grid-template-columns:1fr; } }
-
+  .btn-ghost:hover{ border-color:var(--border-orange); }
   .btn-block{ width:100%; justify-content:center; }
-  .btn-now{ background:transparent; border:1px solid var(--border); color:var(--dim); font-size:0.78rem; padding:11px; margin-top:8px; }
-  .btn-now:hover{ border-color:var(--border-orange); color:var(--orange); }
+  .btn:disabled{ opacity:0.5; cursor:not-allowed; transform:none; }
 
-  .status{ font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--dim); margin-top:12px; min-height:16px; text-align:center; }
+  /* ===== filter bar ===== */
+  .filter-bar{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; padding:12px 14px; margin-bottom:26px; }
+  .pill-group{ display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; }
+  .pill-group::-webkit-scrollbar{ display:none; }
+  .pill{ flex-shrink:0; padding:9px 16px; border-radius:10px; background:transparent; border:none; color:var(--dim);
+    font-family:'JetBrains Mono',monospace; font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer; transition:background 0.2s, color 0.2s; }
+  .pill:hover{ color:var(--white); }
+  .pill.active{ background:var(--orange); color:#050608; font-weight:700; }
+  .ex-select{ background:rgba(255,255,255,0.04); border:1px solid var(--border); color:var(--white); padding:10px 34px 10px 14px;
+    border-radius:10px; font-size:0.8rem; appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6' fill='%23ff7a00'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 14px center; cursor:pointer; }
+  .ex-select:focus{ outline:none; border-color:var(--orange); }
+
+  /* ===== bento grid ===== */
+  .bento{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:16px; }
+  @media(max-width:900px){ .bento{ grid-template-columns:1fr 1fr; } }
+  @media(max-width:520px){ .bento{ grid-template-columns:1fr; } }
+  .cell{ padding:24px; transition:transform 0.25s, border-color 0.25s, box-shadow 0.25s; }
+  .cell:hover{ transform:translateY(-4px); border-color:var(--border-orange); }
+  .cell-lg{ grid-column:span 2; grid-row:span 2; display:flex; flex-direction:column; justify-content:space-between; min-height:210px; }
+  @media(max-width:520px){ .cell-lg{ grid-column:span 1; } }
+  .cell-icon{ width:38px; height:38px; border-radius:11px; background:var(--orange-dim); color:var(--orange); display:flex; align-items:center; justify-content:center; margin-bottom:14px; }
+  .cell-icon svg{ width:18px; height:18px; }
+  .cell-num{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.85rem; line-height:1; }
+  .cell-lg .cell-num{ font-size:3.2rem; }
+  .cell-label{ font-size:0.74rem; color:var(--dim); margin-top:8px; letter-spacing:0.02em; }
+  .cell-sub{ font-family:'JetBrains Mono',monospace; font-size:0.68rem; color:var(--dim2); margin-top:4px; }
+
+  /* ===== streak / PR ===== */
+  .section-title{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.05rem; text-transform:uppercase; letter-spacing:0.02em; margin:34px 0 16px; display:flex; align-items:center; gap:10px; }
+  .section-title .eyebrow-dot{ width:6px; height:6px; border-radius:50%; background:var(--orange); }
+  .pr-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:12px; }
+  .pr-chip{ padding:16px 18px; }
+  .pr-name{ font-family:'JetBrains Mono',monospace; font-size:0.66rem; color:var(--dim); text-transform:uppercase; letter-spacing:0.05em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pr-val{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.3rem; color:var(--orange); margin-top:6px; }
+
+  /* ===== progress view ===== */
+  .progress-focus{ padding:26px; margin-bottom:22px; }
+  .progress-focus-head{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:20px; }
+  .progress-focus-title{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.3rem; text-transform:uppercase; }
+  .metric-toggle{ display:flex; gap:6px; }
+  .metric-btn{ padding:8px 14px; border-radius:9px; background:rgba(255,255,255,0.04); border:1px solid var(--border); color:var(--dim);
+    font-family:'JetBrains Mono',monospace; font-size:0.68rem; letter-spacing:0.05em; cursor:pointer; }
+  .metric-btn.active{ background:var(--orange); border-color:var(--orange); color:#050608; font-weight:700; }
+  .ex-stat-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(110px,1fr)); gap:14px; margin-bottom:22px; }
+  .ex-stat{ }
+  .ex-stat .n{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.5rem; }
+  .ex-stat .l{ font-size:0.68rem; color:var(--dim); margin-top:4px; text-transform:uppercase; letter-spacing:0.04em; }
+  .chart-holder{ height:260px; position:relative; }
+
+  /* ===== workout builder ===== */
+  .builder-card{ padding:30px; max-width:760px; }
+  .builder-meta{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:22px; }
+  @media(max-width:600px){ .builder-meta{ grid-template-columns:1fr 1fr; } }
+  .field label{ display:block; font-family:'JetBrains Mono',monospace; font-size:0.65rem; letter-spacing:0.09em; color:var(--dim); text-transform:uppercase; margin-bottom:7px; }
+  .field input, .field select{ width:100%; background:rgba(255,255,255,0.035); border:1px solid var(--border); color:var(--white);
+    padding:12px 13px; border-radius:10px; font-size:0.88rem; transition:border-color 0.2s; }
+  .field input:focus, .field select:focus{ outline:none; border-color:var(--orange); }
+
+  .exercise-block{ margin-bottom:18px; padding:20px; }
+  .exercise-block-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .exercise-block-title{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1rem; text-transform:uppercase; display:flex; align-items:center; gap:10px; }
+  .type-tag{ font-family:'JetBrains Mono',monospace; font-size:0.6rem; padding:4px 9px; border-radius:20px; text-transform:uppercase; }
+  .type-tag.musculation{ background:rgba(255,122,0,0.14); color:var(--orange); }
+  .type-tag.calisthenics{ background:rgba(127,164,255,0.14); color:var(--blue); }
+  .remove-ex{ background:none; border:none; color:var(--dim2); cursor:pointer; font-size:0.85rem; }
+  .remove-ex:hover{ color:#ff5252; }
+
+  .set-table{ width:100%; border-collapse:collapse; margin-bottom:10px; }
+  .set-table th{ font-family:'JetBrains Mono',monospace; font-size:0.62rem; color:var(--dim2); text-transform:uppercase; text-align:left; padding:6px 8px; letter-spacing:0.06em; }
+  .set-table td{ padding:5px 8px; }
+  .set-table input{ width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--border); color:var(--white); padding:8px 9px; border-radius:8px; font-size:0.85rem; }
+  .set-table input:focus{ outline:none; border-color:var(--orange); }
+  .set-row.flash{ animation:flash 0.6s ease; }
+  @keyframes flash{ 0%{ background:rgba(255,122,0,0.18); } 100%{ background:transparent; } }
+  .set-del{ background:none; border:none; color:var(--dim2); cursor:pointer; font-size:0.8rem; }
+  .set-del:hover{ color:#ff5252; }
+  .add-set-btn{ background:transparent; border:1px dashed var(--border); color:var(--dim); padding:9px; border-radius:9px; width:100%; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.72rem; transition:border-color 0.2s, color 0.2s; }
+  .add-set-btn:hover{ border-color:var(--border-orange); color:var(--orange); }
+
+  .add-exercise-form{ display:none; padding:18px; margin-bottom:18px; }
+  .add-exercise-form.open{ display:block; }
+  .add-exercise-form .field-row{ display:grid; grid-template-columns:2fr 1fr; gap:10px; margin-bottom:14px; }
+
+  .status{ font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--dim); margin-top:14px; min-height:16px; text-align:center; }
   .status.ok{ color:var(--orange); }
-  .storage-note{ font-family:'JetBrains Mono',monospace; font-size:0.65rem; color:var(--dim2); margin-top:20px; line-height:1.7; border-top:1px solid var(--border); padding-top:16px; text-align:center; }
+  .storage-note{ font-family:'JetBrains Mono',monospace; font-size:0.63rem; color:var(--dim2); margin-top:22px; line-height:1.7; border-top:1px solid var(--border); padding-top:16px; text-align:center; }
 
-  .session-grid{ display:grid; gap:18px; }
-  .session-card{ padding:26px 28px; transition:border-color 0.25s ease, transform 0.25s ease; }
-  .session-card:hover{ border-color:var(--border-orange); transform:translateY(-3px); }
-  .session-top{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px; padding-bottom:16px; border-bottom:1px solid var(--border); }
-  .session-date{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.15rem; text-transform:capitalize; }
-  .type-badges{ display:flex; gap:8px; }
-  .type-badge{ font-family:'JetBrains Mono',monospace; font-size:0.66rem; letter-spacing:0.06em; text-transform:uppercase; padding:6px 12px; border-radius:20px; display:flex; align-items:center; gap:6px; }
-  .type-badge.musculation{ background:rgba(255,122,0,0.12); color:var(--orange); border:1px solid rgba(255,122,0,0.3); }
-  .type-badge.calisthenics{ background:rgba(90,140,255,0.12); color:#7fa4ff; border:1px solid rgba(90,140,255,0.3); }
+  /* ===== history ===== */
+  .session-grid{ display:grid; gap:14px; }
+  .session-card{ padding:22px 24px; cursor:pointer; transition:border-color 0.25s; }
+  .session-card:hover{ border-color:var(--border-orange); }
+  .session-top{ display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; }
+  .session-date{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.05rem; text-transform:capitalize; }
+  .session-name{ font-size:0.78rem; color:var(--dim); margin-top:3px; }
+  .session-stats{ display:flex; gap:18px; flex-wrap:wrap; margin-top:14px; }
+  .session-stats div{ font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--dim); }
+  .session-stats b{ color:var(--white); font-size:0.86rem; display:block; }
+  .session-del{ background:none; border:none; color:var(--dim2); cursor:pointer; font-size:0.85rem; }
+  .session-del:hover{ color:#ff5252; }
+  .session-detail{ display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); }
+  .session-detail.open{ display:block; }
+  .detail-ex{ margin-bottom:12px; }
+  .detail-ex-name{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:0.85rem; text-transform:uppercase; margin-bottom:6px; }
+  .detail-set{ font-family:'JetBrains Mono',monospace; font-size:0.74rem; color:var(--dim); padding:3px 0; }
+  .empty-state{ font-family:'JetBrains Mono',monospace; color:var(--dim); font-size:0.85rem; padding:40px; text-align:center; }
 
-  .exercise-row{ display:flex; align-items:center; justify-content:space-between; padding:11px 0; gap:12px; }
-  .exercise-row + .exercise-row{ border-top:1px solid rgba(255,255,255,0.05); }
-  .ex-left{ display:flex; align-items:center; gap:12px; min-width:0; }
-  .ex-icon{ width:32px; height:32px; border-radius:9px; background:rgba(255,255,255,0.04); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--dim); }
-  .ex-icon svg{ width:15px; height:15px; }
-  .ex-name{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:0.92rem; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .ex-meta{ font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--dim); margin-top:2px; }
-  .ex-right{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
-  .ex-time{ font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--dim2); }
-  .ex-del{ background:none; border:none; color:var(--dim2); cursor:pointer; font-size:0.85rem; padding:4px 6px; transition:color 0.2s; }
-  .ex-del:hover{ color:#ff5252; }
-  .empty-state{ font-family:'JetBrains Mono',monospace; color:var(--dim); font-size:0.85rem; padding:30px 0; text-align:center; }
+  /* settings */
+  .settings-card{ padding:26px; max-width:520px; }
+  .settings-card p{ color:var(--dim); font-size:0.85rem; line-height:1.7; margin-bottom:16px; }
 
-  .stats-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-  @media(max-width:900px){ .stats-grid{ grid-template-columns:1fr; } }
-  .chart-card{ padding:26px 26px 18px; }
-  .chart-card.full{ grid-column:1 / -1; }
-  .chart-card h3{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:1.02rem; text-transform:uppercase; letter-spacing:0.02em; margin-bottom:4px; }
-  .chart-card .chart-sub{ font-size:0.78rem; color:var(--dim); margin-bottom:18px; }
-  .chart-holder{ height:220px; position:relative; }
-
-  footer{ border-top:1px solid var(--border); padding:34px 0; text-align:center; font-family:'JetBrains Mono',monospace; font-size:0.7rem; color:var(--dim2); letter-spacing:0.06em; }
-
-  .reveal{ opacity:0; transform:translateY(24px); transition:opacity 0.7s ease, transform 0.7s ease; }
-  .reveal.in{ opacity:1; transform:translateY(0); }
-
-  @media(prefers-reduced-motion: reduce){
-    html{ scroll-behavior:auto; }
-    .reveal{ opacity:1; transform:none; transition:none; }
-    .float-chip{ animation:none; }
-    .dash-card:hover, .session-card:hover, .btn:hover{ transform:none; }
-  }
-
+  ::-webkit-scrollbar{ width:8px; } ::-webkit-scrollbar-track{ background:var(--bg); } ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:4px; }
   a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible{ outline:2px solid var(--orange); outline-offset:2px; }
-  ::-webkit-scrollbar{ width:8px; }
-  ::-webkit-scrollbar-track{ background:var(--bg); }
-  ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:4px; }
+  @media(prefers-reduced-motion:reduce){ html{ scroll-behavior:auto; } .view.active{ animation:none; } .cell:hover, .btn:hover{ transform:none; } }
 </style>
 </head>
 <body>
 
 <div class="grain"></div>
 
-<header>
-  <div class="navbar glass">
-    <div class="logo"><span class="dot"></span>Ironlog</div>
-    <div class="navlinks">
-      <a href="#dashboard">Tableau de bord</a>
-      <a href="#history">Historique</a>
-      <a href="#stats">Statistiques</a>
-    </div>
-    <a href="#log-form" class="nav-cta">+ Séance</a>
+<nav class="rail glass-strong">
+  <div class="rail-logo"><svg viewBox="0 0 24 24" fill="none" stroke="#050608" stroke-width="2"><rect x="1" y="9" width="4" height="6" rx="1"/><rect x="19" y="9" width="4" height="6" rx="1"/><rect x="5" y="7" width="3" height="10" rx="1"/><rect x="16" y="7" width="3" height="10" rx="1"/><path d="M8 12h8"/></svg></div>
+  <div class="rail-nav">
+    <button class="rail-btn active" data-view="dashboard" title="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="11" width="8" height="10" rx="1.5"/><rect x="3" y="14" width="8" height="7" rx="1.5"/></svg></button>
+    <button class="rail-btn" data-view="workout" title="Workout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="rail-btn" data-view="progress" title="Progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8M21 7v6"/></svg></button>
+    <button class="rail-btn" data-view="history" title="History"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></button>
   </div>
-</header>
+  <button class="rail-btn" data-view="settings" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg></button>
+</nav>
 
-<section class="hero" id="top">
-  <div class="ghost-text">EVOLVE</div>
-  <div class="wrap hero-grid">
-    <div>
-      <div class="eyebrow">Musculation & calisthenics</div>
-      <h1>Track your strength.<br><span class="accent">Build</span> your body.</h1>
-      <p class="sub">Musculation, calisthenics et progression au même endroit.</p>
-      <div class="hero-btns">
-        <a href="#log-form" class="btn btn-primary">Ajouter une séance</a>
-        <a href="#stats" class="btn btn-ghost">Voir les statistiques</a>
-      </div>
-    </div>
-    <div class="rings-wrap reveal">
-      <svg viewBox="0 0 200 200">
-        <circle class="ring" cx="100" cy="100" r="86" stroke="rgba(255,255,255,0.07)" stroke-width="10"/>
-        <circle class="ring" id="ringOuter" cx="100" cy="100" r="86" stroke="#ff7a00" stroke-width="10" stroke-dasharray="540" stroke-dashoffset="540"/>
-        <circle class="ring" cx="100" cy="100" r="64" stroke="rgba(255,255,255,0.07)" stroke-width="10"/>
-        <circle class="ring" id="ringMid" cx="100" cy="100" r="64" stroke="#7fa4ff" stroke-width="10" stroke-dasharray="402" stroke-dashoffset="402"/>
-        <circle class="ring" cx="100" cy="100" r="42" stroke="rgba(255,255,255,0.07)" stroke-width="10"/>
-        <circle class="ring" id="ringInner" cx="100" cy="100" r="42" stroke="#ffffff" stroke-width="10" stroke-dasharray="264" stroke-dashoffset="264"/>
-      </svg>
-      <div class="float-chip glass chip-a">Force</div>
-      <div class="float-chip glass chip-b">Contrôle</div>
-    </div>
-  </div>
-</section>
+<nav class="bottom-nav glass-strong">
+  <button class="bn-btn active" data-view="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="11" width="8" height="10" rx="1.5"/><rect x="3" y="14" width="8" height="7" rx="1.5"/></svg><span>HOME</span></button>
+  <button class="bn-btn" data-view="workout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg><span>LOG</span></button>
+  <button class="bn-btn" data-view="progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8M21 7v6"/></svg><span>PROGRESS</span></button>
+  <button class="bn-btn" data-view="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><span>HISTORY</span></button>
+</nav>
 
-<section id="dashboard">
-  <div class="wrap">
-    <div class="section-head reveal">
+<div class="main">
+
+  <!-- ============ DASHBOARD ============ -->
+  <div class="view active" id="view-dashboard">
+    <div class="chip-row" id="chipRow"></div>
+
+    <div class="greet-row">
       <div>
-        <div class="eyebrow">Tableau de bord</div>
-        <h2>Ta progression en un coup d'œil</h2>
+        <div class="greet-eyebrow" id="greetEyebrow">READY TO TRAIN?</div>
+        <div class="greet-title" id="greetTitle">Good morning.</div>
+      </div>
+      <button class="btn btn-primary" id="startWorkoutBtn">Start workout →</button>
+    </div>
+
+    <div class="filter-bar glass-soft">
+      <div class="pill-group" id="periodPills">
+        <button class="pill active" data-period="today">Today</button>
+        <button class="pill" data-period="week">Week</button>
+        <button class="pill" data-period="month">Month</button>
+        <button class="pill" data-period="year">Year</button>
+      </div>
+      <select class="ex-select" id="exerciseSelect"><option value="ALL">All exercises</option></select>
+    </div>
+
+    <div class="bento">
+      <div class="cell cell-lg glass-strong">
+        <div>
+          <div class="cell-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3v18M18 3v18M3 8h6M15 8h6M3 16h6M15 16h6"/></svg></div>
+          <div class="cell-label">Total volume</div>
+        </div>
+        <div><div class="cell-num" id="statVolume">0</div><div class="cell-sub" id="statVolumeSub">kg lifted this period</div></div>
+      </div>
+      <div class="cell glass-soft">
+        <div class="cell-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div>
+        <div class="cell-num" id="statWorkouts">0</div><div class="cell-label">Workouts</div>
+      </div>
+      <div class="cell glass-soft">
+        <div class="cell-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h4l2-8 4 16 2-8h4"/></svg></div>
+        <div class="cell-num" id="statSets">0</div><div class="cell-label">Sets</div>
+      </div>
+      <div class="cell glass-soft">
+        <div class="cell-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6l6 6-6 6"/></svg></div>
+        <div class="cell-num" id="statReps">0</div><div class="cell-label">Reps</div>
+      </div>
+      <div class="cell glass-soft">
+        <div class="cell-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+        <div class="cell-num" id="statDuration">—</div><div class="cell-label">Training time</div>
+      </div>
+      <div class="cell glass-soft">
+        <div class="cell-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20V10M18 20V4M6 20v-6"/></svg></div>
+        <div class="cell-num" id="statAvg">—</div><div class="cell-label">Avg session</div>
+      </div>
+      <div class="cell glass-soft">
+        <div class="cell-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 11-3-6.7M21 4v5h-5"/></svg></div>
+        <div class="cell-num" id="statFreq">0</div><div class="cell-label">Sessions / week</div>
+      </div>
+      <div class="cell glass-soft" style="grid-column:span 2;">
+        <div class="cell-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2c2 4-2 5-2 8a4 4 0 108 0c0-1.5-.8-2.4-1.5-3.3.5 2-1 3-1 3 .3-2.5-1-3.7-1.5-5.7-.3 1.2-1 2-2 3"/></svg></div>
+        <div style="display:flex; gap:28px; align-items:baseline;">
+          <div><div class="cell-num" id="statStreakCur">0</div><div class="cell-label">Current streak</div></div>
+          <div><div class="cell-num" id="statStreakLong" style="font-size:1.3rem; color:var(--dim);">0</div><div class="cell-label">Longest streak</div></div>
+        </div>
       </div>
     </div>
-    <div class="dash-grid reveal">
-      <div class="dash-card glass">
-        <div class="dash-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-        </div>
-        <div class="dash-num" id="statSessions">0</div>
-        <div class="dash-label">Séances</div>
+
+    <div class="section-title"><span class="eyebrow-dot"></span>Personal records</div>
+    <div class="pr-grid glass-soft" style="padding:16px; display:grid;" id="prGrid"></div>
+  </div>
+
+  <!-- ============ WORKOUT ============ -->
+  <div class="view" id="view-workout">
+    <div class="greet-row"><div><div class="greet-eyebrow">New entry</div><div class="greet-title">Build your session</div></div></div>
+
+    <div class="builder-card glass-strong">
+      <div class="builder-meta">
+        <div class="field"><label for="bDate">Date</label><input type="date" id="bDate"></div>
+        <div class="field"><label for="bTime">Time</label><input type="time" id="bTime"></div>
+        <div class="field"><label for="bName">Session name (optional)</label><input type="text" id="bName" placeholder="e.g. Back + Biceps"></div>
       </div>
-      <div class="dash-card glass">
-        <div class="dash-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+
+      <div id="exerciseBlocks"></div>
+
+      <button type="button" class="btn btn-ghost btn-block" id="showAddExerciseBtn">+ Add exercise</button>
+
+      <div class="add-exercise-form glass-soft" id="addExerciseForm">
+        <div class="field-row">
+          <div class="field"><label for="newExName">Exercise</label><input type="text" id="newExName" placeholder="e.g. Bench Press"></div>
+          <div class="field"><label for="newExType">Type</label>
+            <select id="newExType"><option value="musculation">Musculation</option><option value="calisthenics">Calisthenics</option></select>
+          </div>
         </div>
-        <div class="dash-num" id="statDuration">—</div>
-        <div class="dash-label">Temps total d'entraînement</div>
-      </div>
-      <div class="dash-card glass">
-        <div class="dash-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l2.6 6.6L21 10l-5 4.3L17.4 21 12 17.6 6.6 21 8 14.3 3 10l6.4-1.4z"/></svg>
+        <div style="display:flex; gap:10px;">
+          <button type="button" class="btn btn-primary" id="confirmAddExercise" style="flex:1;">Add</button>
+          <button type="button" class="btn btn-ghost" id="cancelAddExercise" style="flex:1;">Cancel</button>
         </div>
-        <div class="dash-num" id="statFavorite" style="font-size:1.3rem;">—</div>
-        <div class="dash-label">Exercice favori</div>
       </div>
-      <div class="dash-card glass">
-        <div class="dash-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2c2 4-2 5-2 8a4 4 0 108 0c0-1.5-.8-2.4-1.5-3.3.5 2-1 3-1 3 .3-2.5-1-3.7-1.5-5.7-.3 1.2-1 2-2 3"/></svg>
-        </div>
-        <div class="dash-num" id="statStreak">0</div>
-        <div class="dash-label">Série actuelle (jours)</div>
-      </div>
+
+      <div class="field" style="margin-top:20px;"><label for="bDuration">Duration (min, optional)</label><input type="number" id="bDuration" min="0" placeholder="45"></div>
+
+      <button type="button" class="btn btn-primary btn-block" id="saveSessionBtn" style="margin-top:18px;">Save session</button>
+      <div class="status" id="statusMsg"></div>
+      <div class="storage-note">Stored server-side in Netlify Blobs — synced across devices. Deleting a session requires the admin password.</div>
     </div>
   </div>
-</section>
 
-<section id="log-form">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <div>
-        <div class="eyebrow">Nouvelle entrée</div>
-        <h2>Enregistrer une séance</h2>
-      </div>
+  <!-- ============ PROGRESS ============ -->
+  <div class="view" id="view-progress">
+    <div class="greet-row"><div><div class="greet-eyebrow">Progress</div><div class="greet-title">Your evolution over time</div></div></div>
+
+    <div class="filter-bar glass-soft">
+      <div class="pill-group" id="periodPills2"></div>
+      <select class="ex-select" id="exerciseSelect2"><option value="ALL">All exercises</option></select>
     </div>
-    <div class="form-card glass reveal">
-      <form id="logForm">
-        <div class="field">
-          <label for="exercise">Exercice</label>
-          <input type="text" id="exercise" placeholder="ex. Tractions, Développé couché" required>
+
+    <div class="progress-focus glass-strong">
+      <div class="progress-focus-head">
+        <div class="progress-focus-title" id="progressTitle">All exercises</div>
+        <div class="metric-toggle" id="metricToggle">
+          <button class="metric-btn active" data-metric="volume">Volume</button>
+          <button class="metric-btn" data-metric="reps">Reps</button>
+          <button class="metric-btn" data-metric="sets">Sets</button>
+          <button class="metric-btn" data-metric="weight" id="weightMetricBtn" style="display:none;">Weight</button>
         </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="type">Type</label>
-            <select id="type">
-              <option value="musculation">Musculation</option>
-              <option value="calisthenics">Calisthenics</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="duration">Durée (min, optionnel)</label>
-            <input type="number" id="duration" min="0" placeholder="45">
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="sets">Séries</label>
-            <input type="number" id="sets" min="1" value="1" required>
-          </div>
-          <div class="field">
-            <label for="reps">Répétitions</label>
-            <input type="text" id="reps" placeholder="ex. 10 ou 10,8,6" required>
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="weight">Poids (optionnel)</label>
-            <input type="number" id="weight" step="0.5" placeholder="kg">
-          </div>
-          <div class="field">
-            <label for="unit">Unité</label>
-            <input type="text" id="unit" value="kg">
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="dateField">Date</label>
-            <input type="date" id="dateField" required>
-          </div>
-          <div class="field">
-            <label for="timeField">Heure de fin</label>
-            <input type="time" id="timeField" required>
-          </div>
-        </div>
-        <button type="button" class="btn btn-now btn-block" id="stampNow">Utiliser la date & l'heure actuelles</button>
-        <button type="submit" class="btn btn-primary btn-block" style="margin-top:14px;">Enregistrer la séance</button>
-        <div class="status" id="statusMsg"></div>
-        <div class="storage-note">Sauvegardé côté serveur (Netlify Blobs) — synchronisé sur tous tes appareils. La suppression nécessite le mot de passe admin.</div>
-      </form>
+      </div>
+      <div class="ex-stat-grid" id="exStatGrid" style="display:none;"></div>
+      <div class="chart-holder"><canvas id="progressChart"></canvas></div>
     </div>
   </div>
-</section>
 
-<section id="history">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <div>
-        <div class="eyebrow">Historique</div>
-        <h2>Tes dernières séances</h2>
-      </div>
-      <p>Regroupées par jour — chaque exercice reste supprimable individuellement.</p>
-    </div>
-    <div class="session-grid reveal" id="historyList"></div>
+  <!-- ============ HISTORY ============ -->
+  <div class="view" id="view-history">
+    <div class="greet-row"><div><div class="greet-eyebrow">History</div><div class="greet-title">Every logged session</div></div></div>
+    <div class="session-grid" id="historyList"></div>
   </div>
-</section>
 
-<section id="stats">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <div>
-        <div class="eyebrow">Statistiques</div>
-        <h2>Ta progression dans le temps</h2>
-      </div>
-    </div>
-    <div class="stats-grid reveal">
-      <div class="chart-card glass">
-        <h3>Évolution des répétitions</h3>
-        <div class="chart-sub">Total de répétitions par jour</div>
-        <div class="chart-holder"><canvas id="chartReps"></canvas></div>
-      </div>
-      <div class="chart-card glass">
-        <h3>Évolution du poids</h3>
-        <div class="chart-sub">Charge maximale par jour</div>
-        <div class="chart-holder"><canvas id="chartWeight"></canvas></div>
-      </div>
-      <div class="chart-card glass full">
-        <h3>Séances par semaine</h3>
-        <div class="chart-sub">Nombre de jours d'entraînement, 8 dernières semaines</div>
-        <div class="chart-holder"><canvas id="chartWeekly"></canvas></div>
-      </div>
+  <!-- ============ SETTINGS ============ -->
+  <div class="view" id="view-settings">
+    <div class="greet-row"><div><div class="greet-eyebrow">Settings</div><div class="greet-title">About this app</div></div></div>
+    <div class="settings-card glass-soft">
+      <p>Your training data is stored server-side in Netlify Blobs, synced across every device you open this site from. Deleting a session requires the admin password set in your Netlify environment variables.</p>
+      <p>Not yet built: a calendar heat-map view, month-over-month comparison percentages, and a custom date-range picker (only Today / Week / Month / Year exist for now).</p>
+      <button class="btn btn-ghost btn-block" id="clearPwBtn">Forget saved admin password</button>
     </div>
   </div>
-</section>
 
-<footer>IRONLOG — suivi personnel d'entraînement</footer>
+</div>
 
 <script>
-const API_URL = '/.netlify/functions/entries';
-let entries = [];
+/* ===================== STATE ===================== */
+const API_URL = '/.netlify/functions/sessions';
+let sessions = [];
+let currentPeriod = 'today';
+let currentExercise = 'ALL';
+let currentMetric = 'volume';
+let draftExercises = [];
 
+/* ===================== HELPERS ===================== */
 function pad(n){ return n.toString().padStart(2,'0'); }
-function todayStr(){
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-}
-function nowTimeStr(){
-  const d = new Date();
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-function fmtDateLabel(dateStr){
-  const [y,m,d] = dateStr.split('-').map(Number);
-  const dt = new Date(y, m-1, d);
-  return dt.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
-}
-function escapeHtml(str){
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
-}
+function todayStr(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function nowTimeStr(){ const d=new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function escapeHtml(str){ const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
+function fmtDateLabel(dateStr){ const [y,m,d]=dateStr.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
+function fmtDuration(min){ if(!min) return '—'; const h=Math.floor(min/60), m=min%60; return h===0 ? `${m}min` : `${h}h${m?pad(m):''}`; }
+function fmtVolume(v){ return v>=1000 ? (v/1000).toFixed(1)+' TON' : Math.round(v)+' KG'; }
+function titleCase(s){ return s.replace(/\b\w/g, c=>c.toUpperCase()); }
 
-async function loadEntries(){
+/* ===================== DATA LAYER ===================== */
+async function loadSessions(){
   try{
     const res = await fetch(API_URL);
-    if(!res.ok) throw new Error('Request failed: ' + res.status);
-    entries = await res.json();
+    if(!res.ok) throw new Error('Request failed: '+res.status);
+    sessions = await res.json();
+    return true;
   }catch(e){
-    console.error('Could not load entries from server:', e);
-    entries = [];
+    console.error('Could not load sessions:', e);
+    sessions = [];
     return false;
   }
-  return true;
 }
-
-async function addEntryRemote(entry){
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(entry)
-  });
-  if(!res.ok) throw new Error('Request failed: ' + res.status);
-  entries = await res.json();
+async function saveSessionRemote(session){
+  const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(session) });
+  if(!res.ok) throw new Error('Request failed: '+res.status);
+  sessions = await res.json();
 }
-
-async function deleteEntryRemote(id){
+async function deleteSessionRemote(id){
   let password = sessionStorage.getItem('ironlog-admin-pw');
   if(!password){
-    password = window.prompt('Mot de passe admin pour supprimer :');
-    if(password === null) throw new Error('cancelled');
+    password = window.prompt('Admin password to delete this session:');
+    if(password===null) throw new Error('cancelled');
   }
-  const res = await fetch(`${API_URL}?id=${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-    headers: { 'x-admin-password': password }
-  });
-  if(res.status === 401){
-    sessionStorage.removeItem('ironlog-admin-pw');
-    throw new Error('Incorrect password');
-  }
-  if(!res.ok) throw new Error('Request failed: ' + res.status);
+  const res = await fetch(`${API_URL}?id=${encodeURIComponent(id)}`, { method:'DELETE', headers:{'x-admin-password':password} });
+  if(res.status===401){ sessionStorage.removeItem('ironlog-admin-pw'); throw new Error('Incorrect password'); }
+  if(!res.ok) throw new Error('Request failed: '+res.status);
   sessionStorage.setItem('ironlog-admin-pw', password);
-  entries = await res.json();
+  sessions = await res.json();
 }
 
-function sumReps(repsStr){
-  const matches = String(repsStr).match(/\d+/g);
-  if(!matches) return 0;
-  return matches.reduce((s,n)=> s + parseInt(n,10), 0);
+/* ===================== FILTERING ===================== */
+function periodStart(period){
+  const now = new Date();
+  if(period==='today') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if(period==='week'){ const d=new Date(now); const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); d.setHours(0,0,0,0); return d; }
+  if(period==='month') return new Date(now.getFullYear(), now.getMonth(), 1);
+  if(period==='year') return new Date(now.getFullYear(), 0, 1);
+  return new Date(0);
 }
+function filterByPeriod(list, period){
+  const start = periodStart(period);
+  return list.filter(s => new Date(s.date+'T00:00:00') >= start);
+}
+function filterByExercise(list, exerciseName){
+  if(exerciseName==='ALL') return list;
+  return list.map(s => ({ ...s, exercises: s.exercises.filter(e => e.name.trim().toLowerCase()===exerciseName.trim().toLowerCase()) }))
+             .filter(s => s.exercises.length>0);
+}
+function getDistinctExercises(){
+  const set = new Set();
+  sessions.forEach(s => s.exercises.forEach(e => set.add(e.name.trim())));
+  return [...set].sort();
+}
+function setVolume(set){ return (set.weight && set.reps) ? set.weight*set.reps : 0; }
 
-function computeDashboard(){
-  const dateSet = new Set(entries.map(e => e.date));
-  const sessionsCount = dateSet.size;
-
-  const totalDurationMin = entries.reduce((sum,e)=> sum + (e.duration ? Number(e.duration) : 0), 0);
-
-  const exCounts = {};
-  entries.forEach(e => {
-    const key = e.exercise.trim().toLowerCase();
-    exCounts[key] = (exCounts[key]||0) + 1;
+/* ===================== DASHBOARD STATS ===================== */
+function computeDashboardStats(){
+  const filtered = filterByExercise(filterByPeriod(sessions, currentPeriod), currentExercise);
+  const workouts = filtered.length;
+  let sets=0, reps=0, volume=0, duration=0;
+  filtered.forEach(s => {
+    duration += s.duration || 0;
+    s.exercises.forEach(e => e.sets.forEach(st => { sets++; reps += st.reps||0; volume += setVolume(st); }));
   });
-  let favorite = '—';
-  let max = 0;
-  Object.keys(exCounts).forEach(k => {
-    if(exCounts[k] > max){ max = exCounts[k]; favorite = k; }
-  });
-  if(favorite !== '—'){
-    favorite = favorite.replace(/\b\w/g, c => c.toUpperCase());
-  }
+  const avgSession = workouts ? Math.round(duration/workouts) : 0;
+  const start = periodStart(currentPeriod);
+  const days = Math.max(1, Math.round((Date.now()-start.getTime())/86400000)+1);
+  const freq = (workouts / (days/7)).toFixed(1);
 
-  const streak = computeStreak(dateSet);
+  const allDates = new Set(sessions.map(s=>s.date));
+  const streakCur = computeStreak(allDates);
+  const streakLong = computeLongestStreak(allDates);
 
-  return { sessionsCount, totalDurationMin, favorite, streak };
+  return { workouts, sets, reps, volume, duration, avgSession, freq, streakCur, streakLong };
 }
-
 function computeStreak(dateSet){
-  let streak = 0;
-  let cursor = new Date();
-  let allowedTodayGrace = true;
+  let streak=0, cursor=new Date(), grace=true;
   while(true){
     const ds = `${cursor.getFullYear()}-${pad(cursor.getMonth()+1)}-${pad(cursor.getDate())}`;
-    if(dateSet.has(ds)){
-      streak++;
-      cursor.setDate(cursor.getDate()-1);
-    } else if(allowedTodayGrace){
-      allowedTodayGrace = false;
-      cursor.setDate(cursor.getDate()-1);
-    } else {
-      break;
-    }
+    if(dateSet.has(ds)){ streak++; cursor.setDate(cursor.getDate()-1); }
+    else if(grace){ grace=false; cursor.setDate(cursor.getDate()-1); }
+    else break;
   }
   return streak;
 }
-
-function fmtDuration(min){
-  if(!min) return '—';
-  const h = Math.floor(min/60);
-  const m = min%60;
-  if(h === 0) return `${m}min`;
-  return `${h}h${m ? pad(m) : ''}`;
+function computeLongestStreak(dateSet){
+  const dates = [...dateSet].sort();
+  let longest=0, run=0, prev=null;
+  dates.forEach(ds => {
+    if(prev){
+      const diff = (new Date(ds) - new Date(prev)) / 86400000;
+      run = diff===1 ? run+1 : 1;
+    } else run = 1;
+    longest = Math.max(longest, run);
+    prev = ds;
+  });
+  return longest;
+}
+function computePRs(){
+  const byExercise = {};
+  sessions.forEach(s => s.exercises.forEach(e => {
+    const key = e.name.trim();
+    if(!byExercise[key]) byExercise[key] = { bestWeight:0, bestReps:0, unit:'kg' };
+    e.sets.forEach(st => {
+      if(st.weight && st.weight > byExercise[key].bestWeight){ byExercise[key].bestWeight = st.weight; byExercise[key].unit = st.unit||'kg'; }
+      if(st.reps > byExercise[key].bestReps) byExercise[key].bestReps = st.reps;
+    });
+  }));
+  return Object.entries(byExercise).map(([name,v]) => ({
+    name,
+    display: v.bestWeight>0 ? `${v.bestWeight} ${v.unit}` : `${v.bestReps} reps`
+  }));
 }
 
-const ICONS = {
-  musculation: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="9" width="4" height="6" rx="1"/><rect x="19" y="9" width="4" height="6" rx="1"/><rect x="5" y="7" width="3" height="10" rx="1"/><rect x="16" y="7" width="3" height="10" rx="1"/><path d="M8 12h8"/></svg>',
-  calisthenics: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="4.5" r="2"/><path d="M12 6.5v6M12 12.5l-5 6M12 12.5l5 6M8 9l4 1 4-1"/></svg>'
-};
-
-function setStatus(msg, ok){
-  const el = document.getElementById('statusMsg');
-  el.textContent = msg;
-  el.className = 'status' + (ok ? ' ok' : '');
-  if(msg){ setTimeout(()=>{ el.textContent=''; el.className='status'; }, 2200); }
+/* ===================== RENDER: DASHBOARD ===================== */
+function renderChips(){
+  const d = computeDashboardStats();
+  document.getElementById('chipRow').innerHTML = `
+    <div class="chip glass-soft"><span class="dot"></span>Streak <b>${d.streakCur}d</b></div>
+    <div class="chip glass-soft">Workouts <b>${d.workouts}</b></div>
+    <div class="chip glass-soft">Sets <b>${d.sets}</b></div>
+    <div class="chip glass-soft">Volume <b>${fmtVolume(d.volume)}</b></div>
+  `;
 }
-
+function renderGreeting(){
+  const h = new Date().getHours();
+  const word = h<12 ? 'morning' : h<18 ? 'afternoon' : 'evening';
+  document.getElementById('greetTitle').textContent = `Good ${word}.`;
+}
 function renderDashboard(){
-  const d = computeDashboard();
-  document.getElementById('statSessions').textContent = d.sessionsCount;
-  document.getElementById('statDuration').textContent = fmtDuration(d.totalDurationMin);
-  document.getElementById('statFavorite').textContent = d.favorite;
-  document.getElementById('statStreak').textContent = d.streak;
+  const d = computeDashboardStats();
+  document.getElementById('statVolume').textContent = fmtVolume(d.volume).split(' ')[0];
+  document.getElementById('statVolumeSub').textContent = fmtVolume(d.volume).includes('TON') ? 'tons lifted this period' : 'kg lifted this period';
+  document.getElementById('statWorkouts').textContent = d.workouts;
+  document.getElementById('statSets').textContent = d.sets;
+  document.getElementById('statReps').textContent = d.reps.toLocaleString();
+  document.getElementById('statDuration').textContent = fmtDuration(d.duration);
+  document.getElementById('statAvg').textContent = fmtDuration(d.avgSession);
+  document.getElementById('statFreq').textContent = d.freq;
+  document.getElementById('statStreakCur').textContent = d.streakCur;
+  document.getElementById('statStreakLong').textContent = d.streakLong;
+  renderChips();
+
+  const prs = computePRs();
+  const prGrid = document.getElementById('prGrid');
+  prGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(150px,1fr))';
+  prGrid.innerHTML = prs.length ? prs.map(p => `
+    <div class="pr-chip glass-soft"><div class="pr-name">${escapeHtml(p.name)}</div><div class="pr-val">${escapeHtml(p.display)}</div></div>
+  `).join('') : '<div class="empty-state">No personal records yet — log a session to start tracking them.</div>';
+}
+function populateExerciseSelects(){
+  const exercises = getDistinctExercises();
+  [document.getElementById('exerciseSelect'), document.getElementById('exerciseSelect2')].forEach(sel => {
+    const current = sel.value;
+    sel.innerHTML = '<option value="ALL">All exercises</option>' + exercises.map(e => `<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`).join('');
+    if(exercises.includes(current) || current==='ALL') sel.value = current;
+  });
 }
 
+/* ===================== RENDER: PROGRESS ===================== */
+let progressChart = null;
+function computeMetricSeries(){
+  const filtered = filterByExercise(filterByPeriod(sessions, currentPeriod), currentExercise);
+  const byDate = {};
+  filtered.forEach(s => {
+    if(!byDate[s.date]) byDate[s.date] = [];
+    s.exercises.forEach(e => e.sets.forEach(st => byDate[s.date].push(st)));
+  });
+  const dates = Object.keys(byDate).sort();
+  const data = dates.map(d => {
+    const sets = byDate[d];
+    if(currentMetric==='reps') return sets.reduce((s,x)=>s+(x.reps||0),0);
+    if(currentMetric==='sets') return sets.length;
+    if(currentMetric==='weight') return Math.max(0, ...sets.filter(x=>x.weight).map(x=>x.weight));
+    return sets.reduce((s,x)=>s+setVolume(x),0);
+  });
+  return { labels: dates.map(d=>d.slice(5)), data };
+}
+function computeExerciseStats(){
+  const filtered = filterByExercise(filterByPeriod(sessions, currentPeriod), currentExercise);
+  let sets=0, reps=0, volume=0, bestReps=0, bestWeight=0, unit='kg';
+  let lastDate = null;
+  filtered.forEach(s => s.exercises.forEach(e => {
+    e.sets.forEach(st => {
+      sets++; reps += st.reps||0; volume += setVolume(st);
+      if(st.reps>bestReps) bestReps=st.reps;
+      if(st.weight && st.weight>bestWeight){ bestWeight=st.weight; unit=st.unit||'kg'; }
+    });
+    if(!lastDate || s.date>lastDate) lastDate = s.date;
+  }));
+  const avgReps = sets ? Math.round(reps/sets) : 0;
+  return { sets, reps, avgReps, bestReps, bestWeight, unit, volume, lastDate };
+}
+function renderProgress(){
+  document.getElementById('progressTitle').textContent = currentExercise==='ALL' ? 'All exercises' : titleCase(currentExercise);
+  document.getElementById('weightMetricBtn').style.display = currentExercise==='ALL' ? 'none' : 'inline-block';
+  if(currentExercise==='ALL' && currentMetric==='weight') { currentMetric='volume'; syncMetricButtons(); }
+
+  const statGrid = document.getElementById('exStatGrid');
+  if(currentExercise==='ALL'){
+    statGrid.style.display = 'none';
+  } else {
+    const st = computeExerciseStats();
+    statGrid.style.display = 'grid';
+    statGrid.innerHTML = `
+      <div class="ex-stat"><div class="n">${st.sets}</div><div class="l">Total sets</div></div>
+      <div class="ex-stat"><div class="n">${st.reps}</div><div class="l">Total reps</div></div>
+      <div class="ex-stat"><div class="n">${st.avgReps}</div><div class="l">Avg reps</div></div>
+      <div class="ex-stat"><div class="n">${st.bestReps}</div><div class="l">Best reps</div></div>
+      <div class="ex-stat"><div class="n">${st.bestWeight ? st.bestWeight+' '+st.unit : '—'}</div><div class="l">Best weight</div></div>
+      <div class="ex-stat"><div class="n">${fmtVolume(st.volume)}</div><div class="l">Total volume</div></div>
+      <div class="ex-stat"><div class="n">${st.lastDate ? fmtDateLabel(st.lastDate) : '—'}</div><div class="l">Last performed</div></div>
+    `;
+  }
+
+  const { labels, data } = computeMetricSeries();
+  const ctx = document.getElementById('progressChart');
+  if(progressChart) progressChart.destroy();
+  progressChart = new Chart(ctx, {
+    type: currentMetric==='sets' ? 'bar' : 'line',
+    data:{ labels, datasets:[{
+      data, borderColor:'#ff7a00', backgroundColor: currentMetric==='sets' ? 'rgba(255,122,0,0.65)' : 'rgba(255,122,0,0.15)',
+      fill: currentMetric!=='sets', tension:0.35, pointBackgroundColor:'#ff7a00', pointRadius:3, borderWidth:2, borderRadius:6, maxBarThickness:28
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{ duration:500 },
+      plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#0a0b0e', borderColor:'rgba(255,122,0,0.3)', borderWidth:1 } },
+      scales:{
+        x:{ ticks:{ color:'rgba(255,255,255,0.4)', font:{family:'JetBrains Mono', size:10} }, grid:{ color:'rgba(255,255,255,0.05)' } },
+        y:{ beginAtZero:true, ticks:{ color:'rgba(255,255,255,0.4)', font:{family:'JetBrains Mono', size:10} }, grid:{ color:'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+}
+function syncMetricButtons(){
+  document.querySelectorAll('.metric-btn').forEach(b => b.classList.toggle('active', b.dataset.metric===currentMetric));
+}
+
+/* ===================== RENDER: HISTORY ===================== */
 function renderHistory(){
   const container = document.getElementById('historyList');
-  if(!entries.length){
-    container.innerHTML = '<div class="empty-state glass" style="padding:40px;">Aucune séance enregistrée pour le moment. Ta première entrée ouvre l historique.</div>';
+  if(!sessions.length){
+    container.innerHTML = '<div class="empty-state glass-soft">No sessions logged yet. Your first one opens the history.</div>';
     return;
   }
-  const byDate = {};
-  entries.forEach(e => {
-    if(!byDate[e.date]) byDate[e.date] = [];
-    byDate[e.date].push(e);
-  });
-  const dates = Object.keys(byDate).sort((a,b)=> b.localeCompare(a));
-
-  container.innerHTML = dates.map(date => {
-    const dayEntries = byDate[date].sort((a,b)=> b.time.localeCompare(a.time));
-    const types = [...new Set(dayEntries.map(e => e.type || 'musculation'))];
-    const badges = types.map(t => `<span class="type-badge ${t}">${ICONS[t] || ''}${t === 'calisthenics' ? 'Calisthenics' : 'Musculation'}</span>`).join('');
-
-    const rows = dayEntries.map(e => {
-      const t = e.type || 'musculation';
-      return `
-      <div class="exercise-row">
-        <div class="ex-left">
-          <div class="ex-icon">${ICONS[t] || ''}</div>
-          <div>
-            <div class="ex-name">${escapeHtml(e.exercise)}</div>
-            <div class="ex-meta">${escapeHtml(String(e.sets))} × ${escapeHtml(String(e.reps))}${e.weight ? ' — ' + escapeHtml(String(e.weight)) + escapeHtml(e.unit||'') : ''}</div>
-          </div>
-        </div>
-        <div class="ex-right">
-          <span class="ex-time">${escapeHtml(e.time)}</span>
-          <button class="ex-del" data-id="${e.id}" aria-label="Supprimer">✕</button>
-        </div>
-      </div>`;
-    }).join('');
-
-    return `<div class="session-card glass">
-      <div class="session-top">
-        <div class="session-date">${fmtDateLabel(date)}</div>
-        <div class="type-badges">${badges}</div>
+  const sorted = [...sessions].sort((a,b) => (b.date+b.time).localeCompare(a.date+a.time));
+  container.innerHTML = sorted.map(s => {
+    let sets=0, reps=0, volume=0;
+    s.exercises.forEach(e => e.sets.forEach(st => { sets++; reps+=st.reps||0; volume+=setVolume(st); }));
+    const name = s.name || s.exercises.map(e=>e.name).join(' + ');
+    const detail = s.exercises.map(e => `
+      <div class="detail-ex">
+        <div class="detail-ex-name">${escapeHtml(e.name)} <span style="color:var(--dim2); font-weight:400;">(${e.type})</span></div>
+        ${e.sets.map((st,i) => `<div class="detail-set">Set ${i+1} — ${st.reps} reps${st.weight ? ' @ '+st.weight+' '+st.unit : ''}</div>`).join('')}
       </div>
-      ${rows}
+    `).join('');
+    return `
+    <div class="session-card glass-soft" data-id="${s.id}">
+      <div class="session-top">
+        <div>
+          <div class="session-date">${fmtDateLabel(s.date)} · ${escapeHtml(s.time)}</div>
+          <div class="session-name">${escapeHtml(name)}</div>
+        </div>
+        <button class="session-del" data-id="${s.id}" aria-label="Delete session">✕</button>
+      </div>
+      <div class="session-stats">
+        <div><b>${s.exercises.length}</b>exercises</div>
+        <div><b>${sets}</b>sets</div>
+        <div><b>${reps}</b>reps</div>
+        <div><b>${fmtVolume(volume)}</b>volume</div>
+        <div><b>${fmtDuration(s.duration)}</b>duration</div>
+      </div>
+      <div class="session-detail">${detail}</div>
     </div>`;
   }).join('');
 
-  container.querySelectorAll('.ex-del').forEach(btn => {
-    btn.addEventListener('click', async () => {
+  container.querySelectorAll('.session-card').forEach(card => {
+    card.addEventListener('click', (ev) => {
+      if(ev.target.closest('.session-del')) return;
+      card.querySelector('.session-detail').classList.toggle('open');
+    });
+  });
+  container.querySelectorAll('.session-del').forEach(btn => {
+    btn.addEventListener('click', async (ev) => {
+      ev.stopPropagation();
       btn.disabled = true;
       try{
-        await deleteEntryRemote(btn.dataset.id);
-        renderHistory();
-        renderDashboard();
-        renderCharts();
+        await deleteSessionRemote(btn.dataset.id);
+        refreshAll();
       }catch(e){
-        if(e.message !== 'cancelled'){
-          console.error(e);
-          setStatus(e.message === 'Incorrect password' ? 'Mot de passe incorrect.' : 'Suppression impossible — vérifie ta connexion.', false);
-        }
+        if(e.message!=='cancelled') console.error(e);
         btn.disabled = false;
       }
     });
   });
 }
 
-let charts = {};
-const chartBaseOptions = {
-  responsive:true, maintainAspectRatio:false,
-  animation:{ duration:600, easing:'easeOutQuart' },
-  plugins:{ legend:{ display:false }, tooltip:{ backgroundColor:'#0a0c12', borderColor:'rgba(255,122,0,0.3)', borderWidth:1, titleFont:{family:'JetBrains Mono'}, bodyFont:{family:'JetBrains Mono'} } },
-  scales:{
-    x:{ ticks:{ color:'rgba(255,255,255,0.4)', font:{family:'JetBrains Mono', size:10} }, grid:{ color:'rgba(255,255,255,0.05)' } },
-    y:{ ticks:{ color:'rgba(255,255,255,0.4)', font:{family:'JetBrains Mono', size:10} }, grid:{ color:'rgba(255,255,255,0.05)' }, beginAtZero:true }
-  }
-};
+/* ===================== WORKOUT BUILDER ===================== */
+function renderExerciseBlocks(){
+  const container = document.getElementById('exerciseBlocks');
+  container.innerHTML = draftExercises.map((ex, exIdx) => `
+    <div class="exercise-block glass-soft">
+      <div class="exercise-block-head">
+        <div class="exercise-block-title">${escapeHtml(ex.name)} <span class="type-tag ${ex.type}">${ex.type}</span></div>
+        <button class="remove-ex" data-exidx="${exIdx}">✕</button>
+      </div>
+      <table class="set-table">
+        <thead><tr><th>Set</th><th>Reps</th><th>Weight</th><th></th></tr></thead>
+        <tbody>
+          ${ex.sets.map((st, setIdx) => `
+            <tr class="set-row ${st._flash ? 'flash' : ''}" data-exidx="${exIdx}" data-setidx="${setIdx}">
+              <td class="mono" style="color:var(--dim);">${setIdx+1}</td>
+              <td><input type="number" min="0" value="${st.reps}" data-field="reps" data-exidx="${exIdx}" data-setidx="${setIdx}"></td>
+              <td><input type="number" min="0" step="0.5" value="${st.weight ?? ''}" placeholder="kg" data-field="weight" data-exidx="${exIdx}" data-setidx="${setIdx}"></td>
+              <td><button class="set-del" data-exidx="${exIdx}" data-setidx="${setIdx}">✕</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <button type="button" class="add-set-btn" data-exidx="${exIdx}">+ Add set</button>
+    </div>
+  `).join('');
+  draftExercises.forEach(ex => ex.sets.forEach(st => delete st._flash));
 
-function destroyChart(key){
-  if(charts[key]){ charts[key].destroy(); delete charts[key]; }
-}
-
-function renderCharts(){
-  if(typeof Chart === 'undefined') return;
-
-  const byDate = {};
-  entries.forEach(e => { if(!byDate[e.date]) byDate[e.date] = []; byDate[e.date].push(e); });
-  const sortedDates = Object.keys(byDate).sort();
-  const last14 = sortedDates.slice(-14);
-
-  const repsData = last14.map(d => byDate[d].reduce((s,e)=> s + sumReps(e.reps), 0));
-  destroyChart('reps');
-  charts.reps = new Chart(document.getElementById('chartReps'), {
-    type:'line',
-    data:{ labels: last14.map(d => d.slice(5)), datasets:[{
-      data: repsData, borderColor:'#ff7a00', backgroundColor:'rgba(255,122,0,0.14)',
-      fill:true, tension:0.35, pointBackgroundColor:'#ff7a00', pointRadius:3, borderWidth:2
-    }]},
-    options: chartBaseOptions
+  container.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const { exidx, setidx, field } = inp.dataset;
+      const val = inp.value;
+      draftExercises[exidx].sets[setidx][field] = field==='reps' ? (parseInt(val,10)||0) : (val===''? null : parseFloat(val));
+    });
   });
-
-  const weightDates = last14.filter(d => byDate[d].some(e => e.weight));
-  const weightData = weightDates.map(d => Math.max(...byDate[d].filter(e=>e.weight).map(e=> Number(e.weight))));
-  destroyChart('weight');
-  charts.weight = new Chart(document.getElementById('chartWeight'), {
-    type:'line',
-    data:{ labels: weightDates.map(d => d.slice(5)), datasets:[{
-      data: weightData, borderColor:'#7fa4ff', backgroundColor:'rgba(127,164,255,0.14)',
-      fill:true, tension:0.35, pointBackgroundColor:'#7fa4ff', pointRadius:3, borderWidth:2
-    }]},
-    options: chartBaseOptions
+  container.querySelectorAll('.add-set-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const exidx = btn.dataset.exidx;
+      const ex = draftExercises[exidx];
+      const last = ex.sets[ex.sets.length-1];
+      ex.sets.push({ reps: last ? last.reps : 0, weight: last ? last.weight : null, unit:'kg', _flash:true });
+      renderExerciseBlocks();
+    });
   });
-
-  const weekMap = {};
-  sortedDates.forEach(d => {
-    const dt = new Date(d + 'T00:00:00');
-    const onejan = new Date(dt.getFullYear(),0,1);
-    const week = Math.ceil((((dt - onejan) / 86400000) + onejan.getDay()+1)/7);
-    const key = `${dt.getFullYear()}-S${pad(week)}`;
-    weekMap[key] = (weekMap[key]||0) + 1;
+  container.querySelectorAll('.set-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const { exidx, setidx } = btn.dataset;
+      draftExercises[exidx].sets.splice(setidx,1);
+      if(draftExercises[exidx].sets.length===0) draftExercises.splice(exidx,1);
+      renderExerciseBlocks();
+    });
   });
-  const weekKeys = Object.keys(weekMap).sort().slice(-8);
-  destroyChart('weekly');
-  charts.weekly = new Chart(document.getElementById('chartWeekly'), {
-    type:'bar',
-    data:{ labels: weekKeys, datasets:[{
-      data: weekKeys.map(k => weekMap[k]), backgroundColor:'rgba(255,122,0,0.65)', borderRadius:6, borderSkipped:false, maxBarThickness:36
-    }]},
-    options: chartBaseOptions
+  container.querySelectorAll('.remove-ex').forEach(btn => {
+    btn.addEventListener('click', () => { draftExercises.splice(btn.dataset.exidx,1); renderExerciseBlocks(); });
   });
 }
 
-document.getElementById('dateField').value = todayStr();
-document.getElementById('timeField').value = nowTimeStr();
+function resetBuilder(){
+  draftExercises = [];
+  document.getElementById('bDate').value = todayStr();
+  document.getElementById('bTime').value = nowTimeStr();
+  document.getElementById('bName').value = '';
+  document.getElementById('bDuration').value = '';
+  renderExerciseBlocks();
+}
 
-document.getElementById('stampNow').addEventListener('click', () => {
-  document.getElementById('dateField').value = todayStr();
-  document.getElementById('timeField').value = nowTimeStr();
+/* ===================== VIEW SWITCHING ===================== */
+function switchView(view){
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id==='view-'+view));
+  document.querySelectorAll('.rail-btn, .bn-btn').forEach(b => b.classList.toggle('active', b.dataset.view===view));
+  if(view==='progress') renderProgress();
+  window.scrollTo({top:0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto':'smooth'});
+}
+document.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+document.getElementById('startWorkoutBtn').addEventListener('click', () => switchView('workout'));
+
+/* ===================== FILTER CONTROLS ===================== */
+function syncPeriodPills(){
+  document.querySelectorAll('#periodPills .pill, #periodPills2 .pill').forEach(p => p.classList.toggle('active', p.dataset.period===currentPeriod));
+}
+document.getElementById('periodPills').querySelectorAll('.pill').forEach(p => {
+    p.addEventListener('click', () => { currentPeriod = p.dataset.period; syncPeriodPills(); syncPeriod2(); renderDashboard(); if(document.getElementById('view-progress').classList.contains('active')) renderProgress(); });
+  });
+// mirror pills into progress view
+document.getElementById('periodPills2').innerHTML = document.getElementById('periodPills').innerHTML;
+function syncPeriod2(){ document.getElementById('periodPills2').innerHTML = document.getElementById('periodPills').innerHTML; attachPeriod2(); syncPeriodPills(); }
+function attachPeriod2(){
+  document.getElementById('periodPills2').querySelectorAll('.pill').forEach(p => {
+    p.addEventListener('click', () => { currentPeriod = p.dataset.period; syncPeriodPills(); document.getElementById('periodPills').querySelectorAll('.pill').forEach(pp=>pp.classList.toggle('active', pp.dataset.period===currentPeriod)); renderDashboard(); renderProgress(); });
+  });
+}
+attachPeriod2();
+
+document.getElementById('exerciseSelect').addEventListener('change', (e) => {
+  currentExercise = e.target.value; document.getElementById('exerciseSelect2').value = currentExercise; renderDashboard();
+});
+document.getElementById('exerciseSelect2').addEventListener('change', (e) => {
+  currentExercise = e.target.value; document.getElementById('exerciseSelect').value = currentExercise; renderDashboard(); renderProgress();
+});
+document.getElementById('metricToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('.metric-btn'); if(!btn) return;
+  currentMetric = btn.dataset.metric; syncMetricButtons(); renderProgress();
 });
 
-document.getElementById('logForm').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  const exercise = document.getElementById('exercise').value.trim();
-  const type = document.getElementById('type').value;
-  const duration = document.getElementById('duration').value;
-  const sets = document.getElementById('sets').value;
-  const reps = document.getElementById('reps').value.trim();
-  const weight = document.getElementById('weight').value;
-  const unit = document.getElementById('unit').value.trim();
-  const date = document.getElementById('dateField').value;
-  const time = document.getElementById('timeField').value;
+/* ===================== BUILDER CONTROLS ===================== */
+document.getElementById('showAddExerciseBtn').addEventListener('click', () => {
+  document.getElementById('addExerciseForm').classList.add('open');
+  document.getElementById('newExName').focus();
+});
+document.getElementById('cancelAddExercise').addEventListener('click', () => {
+  document.getElementById('addExerciseForm').classList.remove('open');
+  document.getElementById('newExName').value = '';
+});
+document.getElementById('confirmAddExercise').addEventListener('click', () => {
+  const name = document.getElementById('newExName').value.trim();
+  const type = document.getElementById('newExType').value;
+  if(!name) return;
+  draftExercises.push({ name, type, sets:[{ reps:0, weight:null, unit:'kg', _flash:true }] });
+  document.getElementById('newExName').value = '';
+  document.getElementById('addExerciseForm').classList.remove('open');
+  renderExerciseBlocks();
+});
 
-  if(!exercise || !sets || !reps || !date || !time){
-    setStatus('Renseigne exercice, séries, répétitions, date et heure.', false);
-    return;
+document.getElementById('saveSessionBtn').addEventListener('click', async () => {
+  const date = document.getElementById('bDate').value;
+  const time = document.getElementById('bTime').value;
+  const name = document.getElementById('bName').value.trim();
+  const duration = document.getElementById('bDuration').value;
+
+  if(!date || !time){ setStatus('Set a date and time.', false); return; }
+  if(draftExercises.length===0){ setStatus('Add at least one exercise.', false); return; }
+  for(const ex of draftExercises){
+    if(ex.sets.some(st => !st.reps)){ setStatus(`Fill in reps for every set of ${ex.name}.`, false); return; }
   }
 
-  const submitBtn = document.querySelector('#logForm .btn-primary');
-  submitBtn.disabled = true;
-  const originalLabel = submitBtn.textContent;
-  submitBtn.textContent = 'Enregistrement…';
-
+  const btn = document.getElementById('saveSessionBtn');
+  btn.disabled = true; const original = btn.textContent; btn.textContent = 'Saving…';
   try{
-    await addEntryRemote({
-      exercise, type, duration: duration || null,
-      sets, reps, weight: weight || null, unit: unit || 'kg', date, time
+    await saveSessionRemote({
+      date, time, name, duration: duration || null,
+      exercises: draftExercises.map(ex => ({ name: ex.name, type: ex.type, sets: ex.sets.map(st => ({ reps: st.reps, weight: st.weight, unit: st.unit })) }))
     });
-    setStatus('Séance enregistrée.', true);
-    document.getElementById('exercise').value = '';
-    document.getElementById('reps').value = '';
-    document.getElementById('weight').value = '';
-    document.getElementById('duration').value = '';
-    document.getElementById('exercise').focus();
-    document.getElementById('dateField').value = todayStr();
-    document.getElementById('timeField').value = nowTimeStr();
-    renderDashboard();
-    renderHistory();
-    renderCharts();
+    setStatus('Session saved.', true);
+    resetBuilder();
+    refreshAll();
   }catch(e){
     console.error(e);
-    setStatus('Enregistrement impossible — vérifie ta connexion.', false);
+    setStatus('Could not save — check your connection.', false);
   }finally{
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalLabel;
+    btn.disabled = false; btn.textContent = original;
   }
 });
 
-const revealEls = document.querySelectorAll('.reveal');
-const io = new IntersectionObserver((entries) => {
-  entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
-}, { threshold:0.12 });
-revealEls.forEach(el => io.observe(el));
-
-function animateRings(){
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const outer = document.getElementById('ringOuter');
-  const mid = document.getElementById('ringMid');
-  const inner = document.getElementById('ringInner');
-  if(reduceMotion){
-    outer.style.strokeDashoffset = 540*0.28;
-    mid.style.strokeDashoffset = 402*0.42;
-    inner.style.strokeDashoffset = 264*0.18;
-    return;
-  }
-  requestAnimationFrame(() => {
-    outer.style.transition = 'stroke-dashoffset 1.6s cubic-bezier(.2,.8,.2,1)';
-    mid.style.transition = 'stroke-dashoffset 1.6s cubic-bezier(.2,.8,.2,1) 0.15s';
-    inner.style.transition = 'stroke-dashoffset 1.6s cubic-bezier(.2,.8,.2,1) 0.3s';
-    outer.style.strokeDashoffset = 540*0.28;
-    mid.style.strokeDashoffset = 402*0.42;
-    inner.style.strokeDashoffset = 264*0.18;
-  });
+function setStatus(msg, ok){
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg; el.className = 'status'+(ok?' ok':'');
+  if(msg) setTimeout(()=>{ el.textContent=''; el.className='status'; }, 2400);
 }
 
-(async function boot(){
-  const ok = await loadEntries();
-  if(!ok){
-    setStatus('Impossible de contacter le serveur — le site est-il déployé sur Netlify (ou "netlify dev" en local) ?', false);
-  }
+document.getElementById('clearPwBtn').addEventListener('click', () => {
+  sessionStorage.removeItem('ironlog-admin-pw');
+  const btn = document.getElementById('clearPwBtn');
+  const original = btn.textContent; btn.textContent = 'Cleared.';
+  setTimeout(()=> btn.textContent = original, 1600);
+});
+
+/* ===================== BOOT ===================== */
+async function refreshAll(){
+  const ok = await loadSessions();
+  if(!ok) setStatus('Could not reach the server — is this deployed on Netlify (or "netlify dev" locally)?', false);
+  populateExerciseSelects();
   renderDashboard();
   renderHistory();
-  renderCharts();
-  animateRings();
+  if(document.getElementById('view-progress').classList.contains('active')) renderProgress();
+}
+(async function boot(){
+  renderGreeting();
+  resetBuilder();
+  await refreshAll();
 })();
 </script>
 
